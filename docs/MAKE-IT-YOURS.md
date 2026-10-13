@@ -10,14 +10,18 @@ works: `./build.sh` and `tests/run_host.sh` (see the [README](../README.md)).
 
 ## 2. Name it
 
-- `niwa.c` is yours: rename it if you like (and the one line in `tools/build.py` that compiles it; `tests/run_host.sh` too).
+- `niwa.c` is yours: rename it (`git mv`) and set the name in the two places that know it: `APP` at the top of `tools/build.py`
+  (file names of the build and the package) and `APP` in `tests/run_host.sh`.
 - At its top, before `#include "platform.c"`:
 
   ```c
   #define APP_NAME "MYSYNTH"        /* the rescue and the crash screen say this */
   ```
 
-- The package file names (`niwa.fwsc`) are in `tools/build.py`: search for `niwa`.
+- Keep your changes to the platform files (`platform.c`, `hal/`, `loader/`) to none, and put yours in files of your own: then
+  `git merge upstream/main` takes niwa's updates without conflicts.
+- A record of your own: `SETTINGS_MAGIC` (four letters, as a number), so that your firmware never reads another's settings:
+  `#define SETTINGS_MAGIC 0x........u` at the top of your app, before `#include "platform.c"`.
 - Make your own logo (niwa's is `assets/logo.*`, once it is made: it marks niwa itself, not your firmware).
 
 ## 3. Your package identity
@@ -25,8 +29,7 @@ works: `./build.sh` and `tests/run_host.sh` (see the [README](../README.md)).
 Every FM-1 package carries an identity like `FM-1_990`. The FM-1 reports the one it runs, and installers and the
 hub use it to tell firmwares apart: two firmwares with the same identity look like one.
 
-- niwa is `FM-1_95N` (N = the minor version). **Pick your own** in `tools/build.py` (`PRODUCT` and the
-  `--release` line under it).
+- niwa is `FM-1_95N` (N = the minor version). **Pick your own**: `ID_BASE` at the top of `tools/build.py` (`FM-1_96` for 96N).
 - Keep the form `FM-1_9` + two digits if you can: the web installers then also finish an install that was cut
   off halfway (they resume only the update loaders they know, `FM-1_9NN`).
 - Taken so far: `900` SLOOP, `901` MAKU (0.1), `91N` Felucca, `93N` sloopDX, `97N` zp12, `98N` (a Doom port), `95N` niwa, `99N` Dinghy,

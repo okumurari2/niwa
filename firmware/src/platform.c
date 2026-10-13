@@ -136,7 +136,9 @@ static void ota_commit(const uint8_t *parm)
 
 /* ---- settings: [magic][length][crc32] then the bytes; settings_save erases the sector (~50 ms with
  * the interrupts off: the sound drops out), so save when nothing plays, not on every knob step */
+#ifndef SETTINGS_MAGIC                          /* a firmware built on niwa defines its own, so it never reads another's record */
 #define SETTINGS_MAGIC 0x4157494Eu              /* "NIWA" */
+#endif
 static uint32_t crc32(const uint8_t *p, uint32_t n)
 {
     uint32_t c = 0xFFFFFFFFu, k;

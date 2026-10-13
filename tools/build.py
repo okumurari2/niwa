@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
-"""Build niwa (on Felucca / SLOOP's platform): the app, the update loader and an installable .fwsc package.
+"""Build the app, by default niwa (on Felucca / SLOOP's platform): the app, the update loader and an installable .fwsc package.
 
   tools/build.py [--release X.Y[-suffix]]
 
-Outputs in build/: niwa.bin (app), loader/ota.bin (update loader),
-niwa.fwsc (package). See README.md for the toolchain and the SDK.
+Outputs in build/: APP.bin (app), loader/ota.bin (update loader),
+APP.fwsc (package) (APP: the name set at the top; niwa). See README.md for the toolchain and the SDK.
 
 The JieLi toolchain is Linux x86-64 only. JIELI_TOOLCHAIN points at it; on
 macOS (or with JIELI_DOCKER=1) each tool runs in a linux/amd64 container.
@@ -47,7 +47,9 @@ SDK_SHA256 = {
     "cfg/eq_cfg_hw.bin": "41167491bffed4651750719c973d2758adeb9021a5670d02d6a53c85ed80ea7d",
 }
 
-PRODUCT = "FM-1_950"                # niwa: 95N (OUR_LOADER in the installer wants FM-1_9NN). A firmware built on niwa: pick your own
+APP = "niwa"                        # the app: firmware/src/APP.c, build/APP.bin, build/APP.fwsc. A firmware built on niwa: its name
+ID_BASE = "FM-1_95"                 # the package identity is ID_BASE + N (N = the minor version of a release) (OUR_LOADER in the
+PRODUCT = ID_BASE + "0"             # installer wants FM-1_9NN). niwa: 95N. A firmware built on niwa: pick your own (docs/MAKE-IT-YOURS.md)
 VERSION = None                      # APP_VER for release builds
 
 
@@ -173,11 +175,11 @@ def build_app():
     cmds = [("cc", "-c", FW / "crt0.S", "-o", OUT / "crt0.o"),
             ("cc", "-c", FW / "hal" / "fm1_vec.S", "-o", OUT / "fm1_vec.o"),
             ("cc", "-c", FW / "hal" / "fm1_isr.S", "-o", OUT / "fm1_isr.o"),
-            ("cc", *flags, "-c", FW / "src" / "niwa.c", "-o", OUT / "niwa.o")]
+            ("cc", *flags, "-c", FW / "src" / f"{APP}.c", "-o", OUT / f"{APP}.o")]
     tc_all(*cmds)
-    elf = OUT / "niwa.elf"
+    elf = OUT / f"{APP}.elf"
     tc("pi32v2/bin/ld", "--gc-sections", "-e", "_start", "-T", FW / "app.ld", OUT / "crt0.o", OUT / "fm1_vec.o",
-       OUT / "fm1_isr.o", OUT / "niwa.o", "-o", elf)
+       OUT / "fm1_isr.o", OUT / f"{APP}.o", "-o", elf)
     for sect in ("text.bin", "data.bin", "ramtext.bin"):
         (OUT / sect).unlink(missing_ok=True)
     *_, syms, dis, rt = tc_all(("common/bin/objcopy", "-O", "binary", "-j", ".text", elf, OUT / "text.bin"),
@@ -186,7 +188,7 @@ def build_app():
                                ("common/bin/objdump", "-t", elf),
                                ("common/bin/objdump", "-d", elf),
                                ("common/bin/objdump", "-d", "-j", ".ram_text", elf))
-    (OUT / "niwa.dis").write_text(dis)
+    (OUT / f"{APP}.dis").write_text(dis)
 
     def symv(name):
         return int(re.search(r"^([0-9a-f]+) .*\s" + name + r"$", syms, re.M).group(1), 16)
@@ -203,7 +205,7 @@ def build_app():
             img += b"\xff" * (load - APP_XIP - len(img))
             img += blob
     img += b"\xff" * (-len(img) % 4)
-    (OUT / "niwa.bin").write_bytes(img)
+    (OUT / f"{APP}.bin").write_bytes(img)
     return bytes(img), syms, dis, rt
 
 
@@ -291,14 +293,14 @@ def main():
     ap.add_argument("--release", metavar="X.Y", help="release build: identity FM-1_9XY, version string X.Y")
     ap.add_argument("--sdk", type=Path, help="JieLi AC79 SDK checkout (default: $AC79_SDK)")
     a = ap.parse_args()
-    name = "niwa.fwsc"
+    name = f"{APP}.fwsc"
     if a.release:                   # one digit each: the identity has room for two (X.Y; a .Z only in the text)
         m = re.fullmatch(r"(\d)\.(\d)(\.\d)?(-[A-Za-z0-9]+)?", a.release)
         if not m:
             raise SystemExit(f"--release {a.release}: use X.Y, X.Y.Z or X.Y-suffix, one digit each")
-        PRODUCT = "FM-1_95" + m[2]
+        PRODUCT = ID_BASE + m[2]
         VERSION = m[1] + "." + m[2] + (m[3] or "")
-        name = f"niwa-{a.release}.fwsc"
+        name = f"{APP}-{a.release}.fwsc"
     fm1pkg_make.SDK = a.sdk
     for rel, sha in SDK_SHA256.items():          # fail early without the SDK
         if hashlib.sha256(fm1pkg_make.sdk_file(rel)).hexdigest() != sha:
@@ -320,7 +322,7 @@ def main():
         raise SystemExit("build: checks failed")
     pkg = fm1pkg_make.ufw(fm1pkg_make.flash_image(img, fm1pkg_make.KEY), ota, PRODUCT)
     (OUT / name).write_bytes(pkg)
-    print(f"app      {OUT / 'niwa.bin'}  {len(img)} B")
+    print(f"app      {OUT / (APP + '.bin')}  {len(img)} B")
     print(f"loader   {LDR / 'ota.bin'}  {len(ota)} B")
     print(f"package  {OUT / name}  {len(pkg)} B, identity {PRODUCT}")
     return 0
