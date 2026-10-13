@@ -14,9 +14,19 @@
 <style>
 /* DotGothic16 (SIL OFL 1.1, fonts/OFL.txt), cut to printable ASCII, for the knob labels */
 @font-face { font-family: "DotGothic16"; src: url("fonts/DotGothic16-subset.woff") format("woff"); font-display: swap; }
-:root { --bg: #8e8e93; --fg: #111; --dim: #2c2c2e; --rule: #5a5a5e;
-        --body: #1d1d1f; --tray: #141415; --part: #2a2a2d; --edge: #3a3a3e; --label: #d6d6d8;
-        --lit: #fff4d6; --green: #5fe08a; color-scheme: light; }
+/* The colours: these variables are the page's whole palette (hex, #rrggbb), and app.js can set any of them (theme: { body: "#..." }).
+ * The breathing, the glow and the mid level of an LED are mixes of its off and lit colours (below), so they follow. */
+:root { --bg: #8e8e93; --fg: #111; --dim: #2c2c2e; --rule: #5a5a5e;                /* the page, its text */
+        --body: #1d1d1f; --tray: #141415; --part: #2a2a2d; --edge: #3a3a3e; --label: #d6d6d8;   /* the case, the wells, a button's face, its rim, the print */
+        --bezel: #0b0b0c; --keyface: #0c0c0d;                                      /* around the screen, a key */
+        --btn-off: #3a3934; --lit: #fff4d6; --lit-ink: #1d1d1f;                    /* a button's lit face and the print on it */
+        --slit-off: #3a3a3c; --slit-lit: #ececee;                                  /* a key's light */
+        --green: #5fe08a; --green-ink: #0d2414; --rec: #ff453a; --latch: #79b8ff;  /* PLAY's green, REC's print, a held-down (Shift) rim */
+        --btn-peak: color-mix(in srgb, var(--lit) 80%, var(--btn-off)); --btn-peak-lo: color-mix(in srgb, var(--lit) 58%, var(--btn-off));
+        --slit-peak: color-mix(in srgb, var(--slit-lit) 80%, var(--slit-off)); --slit-peak-lo: color-mix(in srgb, var(--slit-lit) 58%, var(--slit-off));
+        --slit-glow: color-mix(in srgb, var(--slit-lit) 34%, var(--slit-off));
+        --slit-mid: color-mix(in srgb, var(--slit-lit) 54%, var(--slit-off)); --slit-mid-lo: color-mix(in srgb, var(--slit-lit) 45%, var(--slit-off));
+        color-scheme: light; }
 html, body { background: var(--bg); }
 body { margin: 0; color: var(--fg); font: 13px/1.6 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
 .logo { display: block; width: min(100%, 100px); height: auto; margin: 0 0 12px; border-radius: 14px; }
@@ -31,35 +41,35 @@ a { color: inherit; }
 .hit.knob { cursor: ns-resize; border-radius: 50%; }
 .hit:focus-visible { outline: 2px solid var(--lit); outline-offset: 2px; }
 .face { transition: fill .05s; }
-.dim .face.btn { fill: #3a3934; }
+.dim .face.btn { fill: var(--btn-off); }
 .lit .face.btn { fill: var(--lit); }
-.lit text { fill: #1d1d1f; }
+.lit text { fill: var(--lit-ink); }
 .green .face.btn { fill: var(--green); }
-.green text { fill: #0d2414; }
-.face.key { fill: #0c0c0d; stroke: var(--edge); stroke-width: 1.5; }
-.slit { fill: #3a3a3c; transition: fill .05s; }
-.dim .slit { fill: #77777b; }
-.lit .slit { fill: #ececee; filter: drop-shadow(0 0 3px rgba(255, 255, 255, .6)); }
+.green text { fill: var(--green-ink); }
+.face.key { fill: var(--keyface); stroke: var(--edge); stroke-width: 1.5; }
+.slit { fill: var(--slit-off); transition: fill .05s; }
+.dim .slit { fill: var(--slit-glow); }
+.lit .slit { fill: var(--slit-lit); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--slit-lit) 60%, transparent)); }
 /* #119: what can be pressed breathes, dark .. ~60 % of lit and back (hal/fm1_input.h fm1_led_breath, ~1.1 s; MENU >
  * LEDS DIM LO ~30 %): the peaks between dark and lit at ~0.8 / ~0.58 on screen (the LED's share, gamma-encoded) */
-@keyframes breath-btn { 0%, 100% { fill: #3a3934; } 50% { fill: #d8cfb6; } }
-@keyframes breath-slit { 0%, 100% { fill: #3a3a3c; } 50% { fill: #c8c8ca; } }
-@keyframes breath-btn-lo { 0%, 100% { fill: #3a3934; } 50% { fill: #aca592; } }
-@keyframes breath-slit-lo { 0%, 100% { fill: #3a3a3c; } 50% { fill: #a1a1a3; } }
+@keyframes breath-btn { 0%, 100% { fill: var(--btn-off); } 50% { fill: var(--btn-peak); } }
+@keyframes breath-slit { 0%, 100% { fill: var(--slit-off); } 50% { fill: var(--slit-peak); } }
+@keyframes breath-btn-lo { 0%, 100% { fill: var(--btn-off); } 50% { fill: var(--btn-peak-lo); } }
+@keyframes breath-slit-lo { 0%, 100% { fill: var(--slit-off); } 50% { fill: var(--slit-peak-lo); } }
 .breath .face.btn { animation: breath-btn 1.13s ease-in-out infinite; }
 .breath .slit { animation: breath-slit 1.13s ease-in-out infinite; }
 .dimlo .breath .face.btn { animation-name: breath-btn-lo; }
 .dimlo .breath .slit { animation-name: breath-slit-lo; }
 @media (prefers-reduced-motion: reduce) {
   .breath .face.btn, .breath .slit { animation: none; }
-  .breath .face.btn { fill: #aca592; }
-  .breath .slit { fill: #a1a1a3; }
+  .breath .face.btn { fill: var(--btn-peak-lo); }
+  .breath .slit { fill: var(--slit-peak-lo); }
 }
 /* the DRUM grid's beats (hal/fm1_input.h fm1_led_mid): a steady level between the glow and lit, ~15 % (DIM LO ~10 %) */
-.mid .slit { fill: #9a9a9e; }
-.dimlo .mid .slit { fill: #8a8a8e; }
+.mid .slit { fill: var(--slit-mid); }
+.dimlo .mid .slit { fill: var(--slit-mid-lo); }
 .held .face { stroke: var(--lit); stroke-width: 3; }
-.latched .face { stroke: #79b8ff; stroke-width: 3; }
+.latched .face { stroke: var(--latch); stroke-width: 3; }
 .start { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px;
          background: rgba(0, 0, 0, .5); border-radius: 4% / 6%; }
 .start[hidden] { display: none; }
@@ -140,6 +150,7 @@ const LAYOUTS = {
     grid: [24, 582, 86, 60, 94, 70], keybed: [14, 800, 572, 256],
   },
 };
+for (const [k, v] of Object.entries(app.theme || {})) document.documentElement.style.setProperty("--" + k, v);   // app.js theme: the palette above
 document.title = app.title || "FM-1";
 document.querySelector('meta[name="description"]').content = app.description || "";
 if (app.logo) { const l = document.getElementById("logo"); l.src = app.logo; l.alt = app.title || ""; l.hidden = false; }
@@ -180,7 +191,7 @@ function build(name) {
   el("rect", { x: 4, y: 4, width: L.w - 8, height: L.h - 8, rx: 40, fill: "var(--body)" });
   for (const [x, y, w, h] of L.trays) el("rect", { x, y, width: w, height: h, rx: 14, fill: "var(--tray)" });
   const [sx, sy, ss] = L.screen;
-  el("rect", { x: sx, y: sy, width: ss, height: ss, rx: 18, fill: "#0b0b0c" });
+  el("rect", { x: sx, y: sy, width: ss, height: ss, rx: 18, fill: "var(--bezel)" });
   const inset = ss / 32;                                         // the 240 x 240 panel inside its bezel
   Object.assign(canvas.style, { left: `${(sx + inset) / L.w * 100}%`, top: `${(sy + inset) / L.h * 100}%`,
                                 width: `${(ss - 2 * inset) / L.w * 100}%`, height: `${(ss - 2 * inset) / L.h * 100}%` });
@@ -196,7 +207,7 @@ function build(name) {
   const button = ([x, y, w, h], n, sub) => {
     const g = el("g", {});
     el("rect", { x, y, width: w, height: h, rx: 8, fill: "var(--part)", stroke: "var(--edge)", "stroke-width": 1.5, class: "face btn" }, g);
-    const ink = n === "REC" ? "#ff453a" : undefined;
+    const ink = n === "REC" ? "var(--rec)" : undefined;
     if (sub) { label(g, x + w / 2, y + h / 2 - 2, n, 10.8, SANS, ink); label(g, x + w / 2, y + h / 2 + 11, sub, 9.9); }
     else label(g, x + w / 2, y + h / 2 + 4.5, n, 12.6, SANS, ink);
     buttons.push({ g, bit: B[n], name: sub ? `${n} / ${sub}` : n });
@@ -390,9 +401,15 @@ function drawScreen(fb) {
 // the power-on sweep (hal/fm1_led_anim.h): a level per LED, lit frames /64 (| 128: the glow under them), drawn as the
 // LED's share of lit between its dark (or glowing) colour and the lit one, mixed in linear light
 const lin = (h) => [1, 3, 5].map((i) => (parseInt(h.slice(i, i + 2), 16) / 255) ** 2.2);
-const ANIM = { btn: [lin("#3a3934"), lin("#3a3934"), lin("#fff4d6")], slit: [lin("#3a3a3c"), lin("#77777b"), lin("#ececee")] };
+const cssColour = (n) => getComputedStyle(document.documentElement).getPropertyValue("--" + n).trim();
+const mixHex = (a, b, t) => "#" + [1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * t + parseInt(b.slice(i, i + 2), 16) * (1 - t)).toString(16).padStart(2, "0")).join("");
+let ANIM = null;                                                  // dark / glow / lit, from the palette (the glow is the CSS's 34 %)
+const animColours = () => ANIM ||= (() => {
+  const [bo, lit, so, sl] = ["btn-off", "lit", "slit-off", "slit-lit"].map(cssColour);
+  return { btn: [lin(bo), lin(bo), lin(lit)], slit: [lin(so), lin(mixHex(sl, so, 0.34)), lin(sl)] };
+})();
 function animFill(kind, q) {
-  const [dark, glow, lit] = ANIM[kind], s = Math.min(q & 127, 64) / 64, base = q & 128 ? glow : dark;
+  const [dark, glow, lit] = animColours()[kind], s = Math.min(q & 127, 64) / 64, base = q & 128 ? glow : dark;
   const c = base.map((v, i) => Math.round(255 * (v + (lit[i] - v) * s) ** (1 / 2.2)));
   return `rgb(${c.join(",")})`;
 }

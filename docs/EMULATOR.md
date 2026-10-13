@@ -24,6 +24,16 @@ python3 -m http.server -d build/emu          then open http://localhost:8000/
 A firmware built on niwa changes only `app.js` (CLAUDE.md). The logo and the tab icon come from `assets/logo.svg` and
 `assets/logo-mark.svg`.
 
+## Colours
+
+The page's palette is CSS variables at the top of `index.html`, and `app.js` can set any of them: `theme: { body: "#17151d", lit: "#e6d9ff" }`
+(hex, `#rrggbb`; the variable's name without the `--`). `bg fg dim rule` the page and its text · `body tray part edge label` the case, the
+wells, a button's face, its rim, the print · `bezel keyface` around the screen, a key · `btn-off lit lit-ink` a button off, lit, and the print on it ·
+`slit-off slit-lit` a key's light · `green green-ink rec latch` PLAY's green, REC's print, the Shift-held rim. The breathing, the glow and the
+mid level of an LED, and the power-on sweep, are mixes of the off and lit colours, so changing those two is enough. The screen's own colours
+are the firmware's (`T_*`, `docs/UI.md`), not the page's. `web/emu/app.js` here is the logo's violet on a dark case; the page's own default
+(no `theme`) is a warm white light on charcoal, as MAKU's.
+
 ## What a firmware needs
 
 The page runs the firmware's loop from outside, one pass per millisecond of the device's time (WebAssembly has no way to stop
