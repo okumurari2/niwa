@@ -16,8 +16,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def git(*a, check=True):
-    return subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, check=check)
+def git(*a, check=True, raw=False):
+    r = subprocess.run(["git", *a], cwd=ROOT, capture_output=True, check=check)
+    if not raw:
+        r.stdout = r.stdout.decode()
+    return r
 
 
 def main():
@@ -39,17 +42,14 @@ def main():
         names = git("ls-tree", "-r", "--name-only", base, "--", p).stdout.split()
         names += [n for n in git("ls-files", "--", p).stdout.split() if n not in names]
         for n in names:
-            was = git("show", f"{base}:{n}", check=False)
+            was = git("show", f"{base}:{n}", check=False, raw=True)
             f = ROOT / n
-            now = f.read_bytes() if f.is_file() else None
             if was.returncode:                                  # not in niwa at that commit: a file added here
                 bad.append(f"added   {n}")
-            elif now is None:
+            elif not f.is_file():
                 bad.append(f"removed {n}")
-            else:
-                ref = subprocess.run(["git", "show", f"{base}:{n}"], cwd=ROOT, capture_output=True).stdout
-                if ref != now:
-                    bad.append(f"changed {n}")
+            elif was.stdout != f.read_bytes():
+                bad.append(f"changed {n}")
     for b in sorted(set(bad)):
         print("OWNED  " + b)
     print(f"check_owned: {len(set(bad))} of niwa's files differ from niwa {base[:7]}" +
