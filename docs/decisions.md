@@ -2,3 +2,7 @@
 - 2026-10-13: maku(73d9d1a)・t8lab(683ff21)から知見だけ先に移す：PHILOSOPHY.md(約束と判断軸)、UI.md(UI_RULESをMAKU固有の名前を外して一般化)、LESSONS.md(踏んだ不具合20件→決まり)、HARVEST.md(取り込み範囲)。コードはまだ移さない
 - 2026-10-13: maku の UI システム = ui_maku.c(242行)+gfx.c の一部+フォント/パレット生成。Felucca のページ UI(ui系約9千行の大半)・未使用音源・シーケンサー・保存形式は持ってこない - MAKU の4区画はそれらを使っていない
 - 2026-10-13: 五度圏(OCT-/OCT+)は maku 方式(調号の付け外し。鳴っている音・弾いた音は高さを保ち、調号が変える1音だけ半音動く)を firmware/src/fifths.h に入れた。t8lab の「在庫を±7半音」は在庫専用で、進行中のフレーズには向かないので採らない。スケール選択は持たない(長調1つ、mask 0xAB5) - 「決めさせない」。tests/fifths_test.c
+- 2026-10-13: 名前を Dinghy から niwa に変更(firmware/src/niwa.c、build/niwa.fwsc、NIWA_HOST、設定のマジック "NIWA")。パッケージ ID は FM-1_95N(ハブの catalog.json に 94N/95N/96N の記載なし。LOFI は 96N を想定、決めたらここに足す)。Dinghy のロゴ(designburg の署名)は外し、niwa のロゴは docs/LOGO-PROMPT.md で作る - GPL の対象外で、Dinghy 専用
+- 2026-10-13: 土台の参照元は「記録つきの複製」: tools/upstream.json と tools/upstream.py(LOCAL=niwa 側の未記録の変更、MOVED=上流の変更)、docs/UPSTREAM.md。niwa は SLOOP 8fad1a1 とほぼ同一(36ファイル中29が同一)、Felucca 1.5.6 の方が新しい所は adopt:later で一覧化。今回は Felucca 1.5.x から何も取り込まない - ローダと USB は本体を壊しうるのに、ここでは実機で試せない
+- 2026-10-13: felucca-bsp は上流に入れない(単体ビルド不可・ライセンス仮・「リリースを作るな」と明記)。ビルドできてライセンスが確定したら3つ目の上流として hal/ loader/ usb.c ota.c を1ディレクトリずつ移す。LOFI は niwa だけを upstream にする
+- 2026-10-13: 五度圏は fifths.h に入れたまま(長調1つ)。Felucca の作者への確認は項目から外した

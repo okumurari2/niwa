@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* A fake FM-1 on a computer: the app (firmware/src/dinghy.c) runs unchanged on it. platform.c includes
- * this file instead of the hardware when DINGHY_HOST is set. A script presses keys over time; out come
+/* A fake FM-1 on a computer: the app (firmware/src/niwa.c) runs unchanged on it. platform.c includes
+ * this file instead of the hardware when NIWA_HOST is set. A script presses keys over time; out come
  * the screen (PPM, at the times SHOT asks) and the sound (WAV, as the FM-1 sends it over USB).
  *
  *   mkdir -p build/host
- *   cc -O2 -Wall -DDINGHY_HOST -Ifirmware/src -Ifirmware/gen -o build/host/dinghy firmware/src/dinghy.c
- *   build/host/dinghy build/host/dinghy        (-> build/host/dinghy.wav, build/host/dinghy-<ms>.ppm)
- *   build/host/dinghy OUT script.txt [FPS]    (your own script; with FPS: OUT-NNNNN.ppm, a frame every 1/FPS s:
+ *   cc -O2 -Wall -DNIWA_HOST -Ifirmware/src -Ifirmware/gen -o build/host/niwa firmware/src/niwa.c
+ *   build/host/niwa build/host/niwa        (-> build/host/niwa.wav, build/host/niwa-<ms>.ppm)
+ *   build/host/niwa OUT script.txt [FPS]    (your own script; with FPS: OUT-NNNNN.ppm, a frame every 1/FPS s:
  *                                             a film of your firmware, e.g. ffmpeg -r 30 -i OUT-%05d.ppm ...)
  *
  * Change SCRIPT below to try your own app. */
@@ -16,7 +16,7 @@
 #include <string.h>
 
 #ifndef APP_NAME
-#define APP_NAME "DINGHY"
+#define APP_NAME "NIWA"
 #endif
 #ifndef APP_VER
 #define APP_VER "0.0"
@@ -124,7 +124,7 @@ static void read_script(const char *path)
     script_n = n;
 }
 
-static const char *host_out = "build/host/dinghy";
+static const char *host_out = "build/host/niwa";
 static int16_t *wav;
 static uint32_t wav_n;
 

@@ -1,30 +1,33 @@
-> **niwa**：maku・t8lab の UI と作法を流用する CFW のための共通基盤。土台は下の Dinghy。
-> 共通化した知見：[設計哲学](docs/PHILOSOPHY.md)・[UI システム](docs/UI.md)・[踏んだエラー](docs/LESSONS.md)・[maku から何を持ってくるか](docs/HARVEST.md)・[決めたこと](docs/decisions.md)
+# niwa
 
-<p align="center"><img src="assets/logo.svg" width="96" alt="Dinghy"></p>
+**The common base for firmware on the M-VAVE FM-1: the plumbing, the screen system and the manners, so that a new firmware starts with the part it is about.**
 
-# Dinghy
+niwa (庭, a garden) is what the firmwares of this family grow in. It plays a sine wave on the keys and that is all it does;
+under it is everything an FM-1 firmware needs before it can be any fun: the update path, the USB rescue, USB-MIDI, USB audio,
+the keys, knobs and LEDs, the screen and a place to keep settings. On top of that it carries what [maku](https://github.com/okumurari2/maku)
+and t8lab learned: how the screen is laid out, what to keep and what never to save, the circle of fifths, and the mistakes already made.
 
-**The smallest firmware for the M-VAVE FM-1 to build your own on.**
-
-Dinghy plays a sine wave on the keys, and that is all it does. Under it is everything an FM-1 firmware needs
-before it can be any fun: the update path, the USB rescue, USB-MIDI, USB audio, the keys, knobs and LEDs, the
-screen and a place to keep settings. It all works, so you start with the part you actually want to write.
+The idea of the instruments built on it: **they play by themselves, they do not go wrong, and they grow to their player's taste**
+([docs/PHILOSOPHY.md](docs/PHILOSOPHY.md)).
 
 ```
-firmware/src/dinghy.c     <- your firmware: ~200 lines, a 4-voice sine. Start here.
+firmware/src/niwa.c       <- the app: ~200 lines, a 4-voice sine. A firmware built on niwa replaces it.
 firmware/src/platform.c   <- the plumbing (boot, USB, updates, audio ISR, settings). Done; read it, don't fight it.
-firmware/src/*.c, hal/    <- Felucca's platform, as SLOOP carries it, unchanged
+firmware/src/fifths.h     <- the key and OCT- / OCT+ as the circle of fifths (from maku)
+firmware/src/*.c, hal/    <- the FM-1 platform of Felucca, as SLOOP carries it. tools/upstream.py watches its upstreams.
+docs/                     <- the screen system (UI.md), the lessons (LESSONS.md), the philosophy, the API
 ```
 
-Dinghy is based on [Felucca](https://github.com/hugelton/Felucca) by Leo Kuroshita (Hügelton Instruments), with its
-platform as [SLOOP](https://github.com/isod89/sloop-fm1) (isod89) carries it: it keeps that platform and throws away the
-rest. The smallest boat of the family, after the felucca and the sloop.
+niwa is based on [niwa](https://github.com/zvenson/niwa) by zvenson, which is based on [Felucca](https://github.com/hugelton/Felucca)
+by Leo Kuroshita (Hügelton Instruments), with its platform as [SLOOP](https://github.com/isod89/sloop-fm1) (isod89) carries it.
+Credits and licences: [LICENSING.md](LICENSING.md).
 
-<p align="center"><img src="docs/screen.png" width="240" alt="Dinghy's screen: the name, the note played, a keyboard with the keys that sound"></p>
+<p align="center"><img src="docs/screen.png" width="240" alt="niwa's screen: the name, the note played, a keyboard with the keys that sound"></p>
 
-> **Status: 0.3, runs on the FM-1.** Tested on the device: the install, MIDI in (pitch exact, 4 voices), USB audio
-> at 44.1 / 48 kHz, the keys, the screen, the octave kept in flash, and back to another firmware through the hub.
+> **Status: not flashed yet.** niwa is Dinghy 0.3 renamed. As Dinghy, the platform was tested on the device: the install, MIDI in
+> (pitch exact, 4 voices), USB audio at 44.1 / 48 kHz, the keys, the screen, the octave kept in flash, and back to another
+> firmware through the hub. What niwa changed since (its name, the package identity `FM-1_95N`, the settings magic, `fifths.h`)
+> has been built and run on a computer (`tests/run_host.sh`, `tests/fifths_test.c`), not on an FM-1.
 
 ## What you get
 
@@ -38,7 +41,8 @@ rest. The smallest boat of the family, after the felucca and the sloop.
 | **Screen** | 240 x 240, text in two sizes, rectangles, lines, pixels. |
 | **Settings** | `settings_load()` / `settings_save()`: up to 256 bytes with a CRC in their own flash sector. |
 | **A crash screen** | A fault shows where it happened (the PC), then the FM-1 restarts. |
-| **Host mode** | The same `dinghy.c` on your computer: the screen as an image, the sound as a WAV. No FM-1 needed to try an idea. |
+| **Host mode** | The same `niwa.c` on your computer: the screen as an image, the sound as a WAV. No FM-1 needed to try an idea. |
+| **The key** | `fifths.h`: OCT- / OCT+ as the circle of fifths, a change of key signature that leaves what already plays alone. One scale, no choosing. |
 | **Checks** | The build fails on what bricks or breaks an FM-1 firmware: a 64-bit division, a call into the chip ROM, too much RAM, a register touched outside `hal/`. |
 
 ## Build your own
@@ -48,7 +52,7 @@ From nothing to your own firmware on the FM-1, step by step. Each step works bef
 ### 1. Copy it
 
 On GitHub: **Use this template** (top right on this page) or fork it, then clone your copy. Rename nothing yet:
-first make sure the unchanged Dinghy builds on your machine.
+first make sure the unchanged niwa builds on your machine.
 
 ### 2. Set up once
 
@@ -68,34 +72,34 @@ On macOS the build runs the toolchain in a `linux/amd64` Docker container by its
 ### 3. Hear it without an FM-1
 
 ```sh
-tests/run_host.sh                           # -> build/host/dinghy.wav and screen PNGs
+tests/run_host.sh                           # -> build/host/niwa.wav and screen PNGs
 ```
 
-Host mode runs the same `dinghy.c` on your computer: the sound as a WAV, the screen as images. Most ideas can be
+Host mode runs the same `niwa.c` on your computer: the sound as a WAV, the screen as images. Most ideas can be
 tried here first, in seconds.
 
 ### 4. Your first change
 
-Open [firmware/src/dinghy.c](firmware/src/dinghy.c) (~200 lines). The sound is `app_audio()`: it gets an empty
+Open [firmware/src/niwa.c](firmware/src/niwa.c) (~200 lines). The sound is `app_audio()`: it gets an empty
 buffer of stereo frames and adds to it. Make the sine a square:
 
 ```c
 s = ((int32_t)ph < 0 ? 8000 : -8000) * amp >> 15;     /* instead of s = (sine(ph) * amp) >> 15; */
 ```
 
-Run `tests/run_host.sh` again and listen to `build/host/dinghy.wav`. The screen is drawn in `app_main()`, the keys
+Run `tests/run_host.sh` again and listen to `build/host/niwa.wav`. The screen is drawn in `app_main()`, the keys
 are read there too: change the text, add a knob ([docs/API.md](docs/API.md) has every call).
 
 ### 5. Onto the FM-1
 
 ```sh
-./build.sh                                       # -> build/dinghy.fwsc (fails on what would brick the FM-1)
-python3 tools/fm1_install.py build/dinghy.fwsc   # over USB; asks before it writes, restarts into your build
+./build.sh                                       # -> build/niwa.fwsc (fails on what would brick the FM-1)
+python3 tools/fm1_install.py build/niwa.fwsc   # over USB; asks before it writes, restarts into your build
 python3 tools/fm1_install.py --info              # what runs on the connected FM-1
 ```
 
 That is the whole loop: change, hear it on the host, build, install. Back to another firmware, or to the official
-one, with the [FM-1 Firmware Hub](https://fm1.designburgapps.com) in Chrome or Edge: Dinghy (and every copy of it)
+one, with the [FM-1 Firmware Hub](https://fm1.designburgapps.com) in Chrome or Edge: niwa (and every copy of it)
 answers the hub's updater like every firmware there. Installing firmware is at your own risk.
 
 ### 6. When it goes wrong
@@ -109,15 +113,18 @@ answers the hub's updater like every firmware there. Installing firmware is at y
 
 ### 7. Make it yours, release it, get into the hub
 
-Your name and logo, your own package identity (so the FM-1 and the installers tell your firmware from Dinghy),
+Your name and logo, your own package identity (so the FM-1 and the installers tell your firmware from niwa),
 a GitHub release with the `.fwsc`, and how to get listed next to the others in the
 [FM-1 Firmware Hub](https://fm1.designburgapps.com): **[docs/MAKE-IT-YOURS.md](docs/MAKE-IT-YOURS.md)**.
 
 ## Where to go next
 
+- **[docs/PHILOSOPHY.md](docs/PHILOSOPHY.md)**, **[docs/UI.md](docs/UI.md)**, **[docs/LESSONS.md](docs/LESSONS.md)**: what the instruments built on niwa promise, how their screens are laid out, and the mistakes already made.
+- **[docs/UPSTREAM.md](docs/UPSTREAM.md)**: where the platform files come from and how niwa keeps up with them.
+- **[docs/HARVEST.md](docs/HARVEST.md)**: what is taken from maku, and what is not.
 - **[docs/API.md](docs/API.md)**: everything `platform.c` gives you, with the panel's ids, the screen calls, the
   audio contract, MIDI, settings, the flash map, timing.
-- **[docs/MAKE-IT-YOURS.md](docs/MAKE-IT-YOURS.md)**: turn Dinghy into your firmware: the name, the package
+- **[docs/MAKE-IT-YOURS.md](docs/MAKE-IT-YOURS.md)**: turn niwa into your firmware: the name, the package
   identity, releases, getting into the FM-1 Firmware Hub.
 - **[docs/RULES.md](docs/RULES.md)**: the chip's rules (no FPU, no libgcc, the audio ISR's budget) and what the build
   checks for you. Read it before your first crash, not after.
@@ -128,4 +135,5 @@ GPL-3.0-only, as Felucca and SLOOP: you may change and share it, and whoever get
 Details, credits and third-party parts in [LICENSING.md](LICENSING.md).
 
 The platform is Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments, with SLOOP's changes (isod89).
-Dinghy (the app, the host mode, the docs) by zvenson.
+The app, the host mode and the docs as they were are by zvenson (Dinghy). niwa's additions (`fifths.h`, `tools/upstream.py`, the docs on
+philosophy, the screen system and the lessons) are by okumurari2.

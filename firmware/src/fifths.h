@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 zvenson */
+ * Copyright (C) 2026 okumurari2 */
 /* The key, and OCT- / OCT+ as the circle of fifths. From maku (maku.c maku_fifth / maku_resig), cut to one scale: major.
  * Pure integer functions, no state: the app keeps `root` (0..11, C = 0) and calls these.
  *

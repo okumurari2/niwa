@@ -1,0 +1,413 @@
+{
+ "about": "niwa's copy of the FM-1 platform and where it came from. tools/upstream.py checks it; docs/UPSTREAM.md explains it.",
+ "upstreams": {
+  "sloop": {
+   "repo": "isod89/sloop-fm1",
+   "note": "niwa's platform files were taken from here (via Dinghy)",
+   "commit": "8fad1a1"
+  },
+  "felucca": {
+   "repo": "hugelton/Felucca",
+   "note": "SLOOP's own upstream; newer than SLOOP in places",
+   "commit": "9f6a885"
+  }
+ },
+ "files": {
+  "firmware/app.ld": {
+   "from": "sloop",
+   "adopt": "later",
+   "note": "Felucca 1.5 moved the RAM / POOL split (96K / 336K -> 72K / 360K). A firmware that needs more pool (delay lines, samples) takes this; it changes the memory map, so test on a device.",
+   "sha256": "6a9f41205e482fbd",
+   "upstream": {
+    "sloop": "6a9f41205e482fbd",
+    "felucca": "46c248b09533d81e"
+   },
+   "status": "same"
+  },
+  "firmware/crt0.S": {
+   "from": "sloop",
+   "adopt": "skip",
+   "note": "Felucca differs in a comment only.",
+   "sha256": "2212471c4a70e940",
+   "upstream": {
+    "sloop": "2212471c4a70e940",
+    "felucca": "e26b8e38377cd477"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_adc.h": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "",
+   "sha256": "1917870bd802de91",
+   "upstream": {
+    "sloop": "1917870bd802de91",
+    "felucca": "1917870bd802de91"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_audio.h": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "",
+   "sha256": "2235144069974854",
+   "upstream": {
+    "sloop": "2235144069974854",
+    "felucca": "2235144069974854"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_cc.h": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "",
+   "sha256": "46c533a0926ba929",
+   "upstream": {
+    "sloop": "46c533a0926ba929",
+    "felucca": "46c533a0926ba929"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_flash.h": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "LOCAL: the flash ranges niwa's firmwares may write (FL_STORE_OK). SLOOP and Felucca add their own stores (FM6 bank, samples, autosave); niwa has none. A firmware that keeps data above 0xE0000 (maku's likes: 0xE5000) widens it: docs/HARVEST.md.",
+   "sha256": "ee9700389d8bf842",
+   "upstream": {
+    "sloop": "ff2c7dacafc775c8",
+    "felucca": "b5d63acad1951bab"
+   },
+   "status": "local"
+  },
+  "firmware/hal/fm1_gpio.h": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "",
+   "sha256": "5e3937e32a3b4b9b",
+   "upstream": {
+    "sloop": "5e3937e32a3b4b9b",
+    "felucca": "5e3937e32a3b4b9b"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_guard.h": {
+   "from": "sloop",
+   "adopt": "skip",
+   "note": "Felucca differs in a comment only.",
+   "sha256": "dda2ebdd3024aab7",
+   "upstream": {
+    "sloop": "dda2ebdd3024aab7",
+    "felucca": "6a5ddde30c97ff09"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_input.h": {
+   "from": "sloop",
+   "adopt": "later",
+   "note": "SLOOP's key scan is what niwa has been tested with on a device; Felucca 1.5.6 differs by ~470 lines. Not examined in detail. Look before the next change to the panel.",
+   "sha256": "7579aa8e061e4b23",
+   "upstream": {
+    "sloop": "7579aa8e061e4b23",
+    "felucca": "67eb28cf2bdb2946"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_irq.h": {
+   "from": "sloop",
+   "adopt": "skip",
+   "note": "LOCAL by a comment only (SLOOP 2.4 wording). Comments, and Felucca's FM1_IRQ_TARGET define (not used here). The div0 trap is off in both.",
+   "sha256": "b54beeaf8bceab5a",
+   "upstream": {
+    "sloop": "9966b15bdd1c2595",
+    "felucca": "0b2191dd30b5b992"
+   },
+   "status": "local"
+  },
+  "firmware/hal/fm1_isr.S": {
+   "from": "sloop",
+   "adopt": "skip",
+   "note": "Felucca differs in a comment only.",
+   "sha256": "5e45c96057735418",
+   "upstream": {
+    "sloop": "5e45c96057735418",
+    "felucca": "2aad84e24a51c79b"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_lcd_hw.h": {
+   "from": "sloop",
+   "adopt": "later",
+   "note": "Felucca adds fm1_lcd_backlight(). Needed with lcd_power() (lcd.c) for a SCREEN OFF.",
+   "sha256": "4fc3318a703fd552",
+   "upstream": {
+    "sloop": "4fc3318a703fd552",
+    "felucca": "9e78a5f9b75fe881"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_sys.h": {
+   "from": "sloop",
+   "adopt": "skip",
+   "note": "Felucca differs in comments only.",
+   "sha256": "5d56781274406b0a",
+   "upstream": {
+    "sloop": "5d56781274406b0a",
+    "felucca": "037bc64e65650fb2"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_time.h": {
+   "from": "sloop",
+   "adopt": "skip",
+   "note": "Felucca differs in a comment only.",
+   "sha256": "e83c725eae2ec5a1",
+   "upstream": {
+    "sloop": "e83c725eae2ec5a1",
+    "felucca": "22116c4b6a365c85"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_timer.h": {
+   "from": "sloop",
+   "adopt": "skip",
+   "note": "Felucca differs in a comment only.",
+   "sha256": "1ec236ce4a75a5b9",
+   "upstream": {
+    "sloop": "1ec236ce4a75a5b9",
+    "felucca": "d5e89b9003501820"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_uart.h": {
+   "from": "sloop",
+   "adopt": "skip",
+   "note": "Felucca's comment says RX is verified on hardware; ours has the older wording. No code difference was found by eye; not diffed byte for byte.",
+   "sha256": "482da9e67231a7b4",
+   "upstream": {
+    "sloop": "482da9e67231a7b4",
+    "felucca": "0df7266a58996c68"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_usb.h": {
+   "from": "sloop",
+   "adopt": "skip",
+   "note": "Felucca differs in comments only.",
+   "sha256": "667289a678a02722",
+   "upstream": {
+    "sloop": "667289a678a02722",
+    "felucca": "12b9b31bde0dbb15"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_vec.S": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "",
+   "sha256": "8f9e787871332f52",
+   "upstream": {
+    "sloop": "8f9e787871332f52",
+    "felucca": "8f9e787871332f52"
+   },
+   "status": "same"
+  },
+  "firmware/hal/fm1_xip.h": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "",
+   "sha256": "dcba6ddb9cd2403e",
+   "upstream": {
+    "sloop": "dcba6ddb9cd2403e",
+    "felucca": "dcba6ddb9cd2403e"
+   },
+   "status": "same"
+  },
+  "firmware/loader/crt0_ldr.S": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "",
+   "sha256": "bd4149b97520d1dc",
+   "upstream": {
+    "sloop": "bd4149b97520d1dc",
+    "felucca": "bd4149b97520d1dc"
+   },
+   "status": "same"
+  },
+  "firmware/loader/ldr_core.c": {
+   "from": "sloop",
+   "adopt": "later",
+   "note": "Same as loader.c: SLOOP's and Felucca's hardening differ. Not merged.",
+   "sha256": "389aa2e09e74fdac",
+   "upstream": {
+    "sloop": "389aa2e09e74fdac",
+    "felucca": "e1f7556414770794"
+   },
+   "status": "same"
+  },
+  "firmware/loader/loader.c": {
+   "from": "sloop",
+   "adopt": "later",
+   "note": "Two hardenings of the same loader: SLOOP's (a flash chip check, LDR_EFLASH; the whole package CRC after the transfer) and Felucca's (the package CRC before any erase; the update records never touch Felucca's store 0x97000..0xE0000). Decide which is wanted after a hardware test of the update path. The store range matters once likes are kept at 0xE5000.",
+   "sha256": "d1a68016bde7c5f1",
+   "upstream": {
+    "sloop": "d1a68016bde7c5f1",
+    "felucca": "88e553333c567fc2"
+   },
+   "status": "same"
+  },
+  "firmware/loader/loader.ld": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "",
+   "sha256": "4acae8c9a16cf9a7",
+   "upstream": {
+    "sloop": "4acae8c9a16cf9a7",
+    "felucca": "4acae8c9a16cf9a7"
+   },
+   "status": "same"
+  },
+  "firmware/src/bootguard.h": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "SLOOP's; Felucca has none.",
+   "sha256": "bf19ef4233565521",
+   "upstream": {
+    "sloop": "bf19ef4233565521",
+    "felucca": null
+   },
+   "status": "same"
+  },
+  "firmware/src/gfx.c": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "LOCAL, TO BE REPLACED: docs/HARVEST.md step 1 takes maku's gfx.c in its place (the AA fonts, the T_* tokens).",
+   "sha256": "a8d9d5921fd28971",
+   "upstream": {
+    "sloop": "cbdd00534b5c602c",
+    "felucca": "7b576eb024b87f29"
+   },
+   "status": "local"
+  },
+  "firmware/src/lcd.c": {
+   "from": "sloop",
+   "adopt": "later",
+   "note": "Felucca adds lcd_power() and lcd_wake_now(): the panel asleep while the sound goes on (maku has SCREEN OFF). Take it with the backlight function when a UI wants it.",
+   "sha256": "b69f0c3d6a5b61c8",
+   "upstream": {
+    "sloop": "b69f0c3d6a5b61c8",
+    "felucca": "bd2e7421d1e309ba"
+   },
+   "status": "same"
+  },
+  "firmware/src/libc.c": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "",
+   "sha256": "344b09afe33da826",
+   "upstream": {
+    "sloop": "344b09afe33da826",
+    "felucca": "344b09afe33da826"
+   },
+   "status": "same"
+  },
+  "firmware/src/ota.c": {
+   "from": "sloop",
+   "adopt": "later",
+   "note": "SLOOP adds OTA_IDENTITY and passes the package CRC on; Felucca moved the buffers to the pool (RAM budget). Not merged.",
+   "sha256": "ffc981586704b41f",
+   "upstream": {
+    "sloop": "ffc981586704b41f",
+    "felucca": "61e53d00615e167f"
+   },
+   "status": "same"
+  },
+  "firmware/src/recovery.c": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "LOCAL: the rescue screen says APP_NAME instead of SLOOP. SLOOP's file; Felucca has none.",
+   "sha256": "f2c7c0c0fd1592f8",
+   "upstream": {
+    "sloop": "eeb80e386e92c19f",
+    "felucca": null
+   },
+   "status": "local"
+  },
+  "firmware/src/uac_fir.h": {
+   "from": "sloop",
+   "adopt": "later",
+   "note": "Felucca 1.1.5 changed the USB audio resampling filter (88 lines). Not examined; check before shipping the 48 kHz path.",
+   "sha256": "b4393a8efc4ce542",
+   "upstream": {
+    "sloop": "b4393a8efc4ce542",
+    "felucca": "063535c30132a673"
+   },
+   "status": "same"
+  },
+  "firmware/src/usb.c": {
+   "from": "sloop",
+   "adopt": "later",
+   "note": "LOCAL: a SysEx reply cut off half way is ended with an F7 on the next send (sx_open); not in SLOOP: worth offering upstream. Felucca 1.5.1 changed usb.c in ways not examined here. GPL-3.0-only (the loader includes it).",
+   "sha256": "68cbe458df1119a4",
+   "upstream": {
+    "sloop": "f23a862537b1a87f",
+    "felucca": "4fc17a5267b80dd1"
+   },
+   "status": "local"
+  },
+  "tools/build.py": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "LOCAL: niwa's names, identity FM-1_95N, the checks.",
+   "sha256": "512d00055b847bf4",
+   "upstream": {
+    "sloop": "8b42493b5d794bc9",
+    "felucca": "35150f31225210fe"
+   },
+   "status": "local"
+  },
+  "tools/fm1_install.py": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "LOCAL: the port filter differs from SLOOP's by the SLOOP name. Not diffed further.",
+   "sha256": "d7b115a592b53612",
+   "upstream": {
+    "sloop": "9e117608e328b91d",
+    "felucca": "d8a8374931f0506b"
+   },
+   "status": "local"
+  },
+  "tools/fm1pkg_make.py": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "",
+   "sha256": "284fa4553d3194d6",
+   "upstream": {
+    "sloop": "284fa4553d3194d6",
+    "felucca": "443803b77bf3647a"
+   },
+   "status": "same"
+  },
+  "tools/get_toolchain.sh": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "",
+   "sha256": "01c997cf377aa964",
+   "upstream": {
+    "sloop": "01c997cf377aa964",
+    "felucca": "01c997cf377aa964"
+   },
+   "status": "same"
+  },
+  "tools/lz4blk.py": {
+   "from": "sloop",
+   "adopt": "",
+   "note": "",
+   "sha256": "bede501ca8774ba6",
+   "upstream": {
+    "sloop": "bede501ca8774ba6",
+    "felucca": "bede501ca8774ba6"
+   },
+   "status": "same"
+  }
+ }
+}

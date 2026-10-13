@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* Dinghy: the smallest FM-1 firmware to build your own on. A sine wave on the keys, and that is all.
- * This is the file to change. Everything below it (platform.c) is done: updates, the USB rescue,
+/* niwa: the base the FM-1 firmwares of this family stand on. As an app it is a sine wave on the keys, and that is all.
+ * This is the file a firmware built on niwa replaces. Everything below it (platform.c) is done: updates, the USB rescue,
  * USB-MIDI, USB audio, keys, knobs, LEDs, the screen, a settings sector.
  *
  *   keys       play sines, 4 voices; the notes go out over USB-MIDI too
@@ -91,7 +91,7 @@ static int quiet(void)                          /* nothing sounds, not even a re
 }
 
 /* ---- the screen: the name, the last note big, the keyboard with what sounds, the octave */
-#define C_ACC RGB(180, 140, 255)                /* lilac, as the logo */
+#define C_ACC RGB(180, 140, 255)                /* lilac */
 #define C_KEY RGB(210, 210, 210)
 #define C_OFF RGB(90, 90, 90)
 #define KEY0 53u                                /* key 0 = F3 */

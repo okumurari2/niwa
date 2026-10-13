@@ -48,7 +48,7 @@ maku は Felucca 1.x の全体（エンジン・シーケンサー・ページ�
 
 | 何 | 使っているもの |
 | --- | --- |
-| 電源投入時に OCT− | USB レスキュー（Dinghy `platform.c`） |
+| 電源投入時に OCT− | USB レスキュー（niwa の `platform.c`） |
 | OCT− + OCT+ を 5 秒 | UBOOT（maku `main.c`）。パネル設定にも使用（t8lab MODES.md） |
 | HOME + OCT− | maku の設定メニュー |
 | フラッシュ `[0x4000, 0x97000)` | アプリ |
@@ -56,12 +56,12 @@ maku は Felucca 1.x の全体（エンジン・シーケンサー・ページ�
 | `0xE5000 / 0xE6000` | maku のいいね（公式への復帰で消える） |
 | `0xFC000` 以降 | 使わない |
 
-Dinghy の設定セクタ（`settings_load()` / `settings_save()`）の場所は [API.md](API.md)「Memory and flash」。
+niwa の設定セクタ（`settings_load()` / `settings_save()`）の場所は [API.md](API.md)「Memory and flash」。
 
 ## 5. 進め方（案）
 
 1. `gfx.c` を maku の必要部分で置き換え、フォントとパレットの生成をビルドに入れる。ホストモードで PNG を出し、Dinghy の画面が崩れないことを見る。
-2. 4区画の骨組みを、トラック・パラメータの表を渡せば描ける形で入れる。`dinghy.c` を4区画で描く例にする。
+2. 4区画の骨組みを、トラック・パラメータの表を渡せば描ける形で入れる。`niwa.c` を4区画で描く例にする。
 3. SOFT（fade-in / erase-dip）を `platform.c` に入れ、`settings_save()` を包む。
 4. 電池通知・LED AUTO。
 5. ここまで来たら LOFI を載せる。いいねの部品は LOFI が要るときに。
