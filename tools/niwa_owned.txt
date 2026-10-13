@@ -12,6 +12,7 @@ firmware/src/quad.h
 firmware/src/soft.h
 firmware/src/battery.h
 firmware/src/fifths.h
+firmware/src/tracks.h
 firmware/src/usb.c
 firmware/src/ota.c
 firmware/src/lcd.c
@@ -31,6 +32,7 @@ tools/niwa_owned.txt
 tests/host.c
 tests/sim.c
 tests/fifths_test.c
+tests/tracks_test.c
 tests/soft_test.c
 tests/battery_test.c
 tests/text_spacing_test.py

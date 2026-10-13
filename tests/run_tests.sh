@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 mkdir -p build
 cc -O2 -Wall -Ifirmware/src -o build/fifths_test tests/fifths_test.c && build/fifths_test
 cc -O2 -Wall -Ifirmware/src -o build/soft_test tests/soft_test.c && build/soft_test
+cc -O2 -Wall -DTRACKS_LOGIC_ONLY -Ifirmware/src -o build/tracks_test tests/tracks_test.c && build/tracks_test
 cc -O2 -Wall -Ifirmware/src -o build/battery_test tests/battery_test.c && build/battery_test
 sh tests/run_host.sh > /dev/null && echo "run_host: ok (build/host/)"
 python3 tests/text_spacing_test.py build/gen/ui_fonts.h | tail -1

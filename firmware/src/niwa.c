@@ -6,6 +6,8 @@
  *   keys       play sines, 4 voices; the notes go out over USB-MIDI too
  *   OCT- OCT+  the octave (kept in flash)
  *   MASTER     the volume (platform.c)
+ *   KNOB 1..4  four track volumes and the focus (tracks.h): the knob turned last is the focused track. Shown only: no
+ *              sound belongs to them here, an app gives its tracks theirs
  *   USB-MIDI   notes in play the sines, with their velocity
  *
  * Rules of the road (the chip has no FPU and no libgcc): integers only, no float, no 64-bit division.
@@ -97,9 +99,11 @@ static int quiet(void)                          /* nothing sounds, not even a re
 /* ---- the screen: docs/UI.md. Top left is "now" (the note, the octave); SELECT, PRESETS and ALGORITHM are the three knobs
  * at the left of the panel, each showing what it moves (quad.h). A knob moves a value 0..127, right = more. */
 #include "quad.h"
+#include "tracks.h"
+static const uint16_t TRK_COL[TRK_N] = {0xFB86, 0xFE60, 0x4E8C, 0x5C7F};   /* the tracks' colours (UI.md 4): fixed per track, whatever the palette */
 static const char *msg;                         /* a message in the place of the name, for ~2 s (UI.md 6): 0 = none */
 static uint32_t msg_until;
-static void draw_now(uint32_t note, int32_t oct)
+static void draw_now(uint32_t note, int32_t oct, const uint8_t *vol, uint32_t focus)
 {
     static const char *const NAME[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
     char s[8] = "-", o[10] = "OCTAVE +0";
@@ -115,10 +119,11 @@ static void draw_now(uint32_t note, int32_t oct)
         if (note >= 12u) s[i++] = (char)('0' + note / 12u - 1u);
         s[i] = 0;
     }
-    cv_text_in(0, 36, QUAD, &AF_L, s, T_TEXT, T_BG);
+    cv_text_in(0, 24, QUAD, &AF_L, s, T_TEXT, T_BG);
     o[7] = oct < 0 ? '-' : '+';
     o[8] = (char)('0' + (oct < 0 ? -oct : oct));
-    cv_text_in(0, 92, QUAD, &AF_S, o, T_MID, T_BG);
+    cv_text_in(0, 58, QUAD, &AF_S, o, T_MID, T_BG);
+    trk_strip(8, 76, QUAD - 16, 36, vol, TRK_COL, focus);
     cv_blit(0, 0);
 }
 
@@ -129,15 +134,18 @@ static int32_t knob(int32_t v, uint32_t enc)    /* a knob moves a value 0..127: 
 }
 
 /* what survives a power-off (add yours, up to 256 bytes) */
-static struct { int8_t oct; uint8_t level, release; } set = {0, 127, 113};
-static uint32_t prev, t_change, dirty, shown_now = ~0u, shown_quads = ~0u;
+static struct { int8_t oct; uint8_t level, release; uint8_t vol[TRK_N]; } set = {0, 127, 113, {100, 100, 100, 100}};
+static uint32_t focus, prev, t_change, dirty, shown_now = ~0u, shown_quads = ~0u;
 static uint8_t held[27];                        /* the note each key plays */
 
 static void app_init(void)
 {
+    uint32_t k;
     settings_load(&set, sizeof set);
     if (set.oct < -2 || set.oct > 2) set.oct = 0;
     if (set.level > 127u || set.release > 127u) { set.level = 127; set.release = 113; }
+    for (k = 0; k < TRK_N; k++)
+        if (set.vol[k] > 127u) set.vol[k] = 100;
 
     palette_set(UI_DEFAULT_PALETTE);
     lcd_fill(0, 0, 240, 240, T_BG);
@@ -165,6 +173,8 @@ static void app_step(void)                      /* one pass of the main loop */
     if (k != set.level) { set.level = (uint8_t)k; level = k; dirty = 1; t_change = fm1_ms; }
     k = (uint32_t)knob(set.release, ENC_PRESETS);
     if (k != set.release) { set.release = (uint8_t)k; dirty = 1; t_change = fm1_ms; }
+    { int32_t d[TRK_N]; for (k = 0; k < TRK_N; k++) d[k] = fm1_enc_take(ENC_KNOB1 + k);
+      if (trk_turn(set.vol, d, &focus)) { dirty = 1; t_change = fm1_ms; } }
     rel_dec = 48 - (int32_t)set.release * 47 / 127;           /* 0 -> 48 (a click), 127 -> 1 (a long tail) */
 
     while (midi_get(&st, &d1, &d2)) {       /* USB-MIDI in, any channel */
@@ -184,8 +194,9 @@ static void app_step(void)                      /* one pass of the main loop */
     if (msg && (int32_t)(fm1_ms - msg_until) >= 0) msg = 0;
     k = battery_notice(fm1_ms, fm1_battery(), fm1_usb_powered(), msg != 0);           /* MANNER:battery: only when it is low */
     if (k) { msg = k == BATT_LOW ? "BATTERY LOW" : "BATTERY EMPTY"; msg_until = fm1_ms + 2000u; }
-    k = quad_mix(quad_mix(quad_mix(last_note, (uint32_t)set.oct + 8u), msg != 0), msg ? (uint32_t)msg[8] : 0u);   /* what the screen shows, as a number: redraw on change */
-    if (k != shown_now) { shown_now = k; draw_now(last_note, set.oct); }
+    k = quad_mix(quad_mix(quad_mix(last_note, (uint32_t)set.oct + 8u), msg != 0), msg ? (uint32_t)msg[8] : 0u);
+    k = quad_mix(quad_mix(quad_mix(quad_mix(k, set.vol[0]), set.vol[1]), quad_mix(set.vol[2], set.vol[3])), focus);   /* what the screen shows, as a number: redraw on change */
+    if (k != shown_now) { shown_now = k; draw_now(last_note, set.oct, set.vol, focus); }
     k = quad_mix(quad_mix(0u, set.level), set.release);
     if (k != shown_quads) {
         quad_param_t sel = {"LEVEL", set.level, 0, T_THEME, 0}, pre = {"RELEASE", set.release, 0, T_THEME, 0};

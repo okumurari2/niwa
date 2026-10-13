@@ -24,6 +24,7 @@ static const host_ev_t SCRIPT0[] = {
     {700, 1u << 7 | 1u << 11 | 1u << 14, -1, 0, 0, 0},          /* + E4 G4: a chord */
     {1200, 0, -1, 0, 0, 0, ENC_SELECT, -24},                    /* SELECT: LEVEL down */
     {1300, 0, -1, 0, 0, 0, ENC_PRESETS, -40},                   /* PRESETS: RELEASE shorter */
+    {1400, 0, -1, 0, 0, 0, ENC_KNOB3, -10},                    /* KNOB 3: track 3 quieter, and it is the focus */
     {1500, 0, -1, 0, 0, 0},
     {1700, 0, -1, 0x90, 81, 120},                               /* MIDI in: A5 */
     {2300, 0, -1, 0x80, 81, 0},
