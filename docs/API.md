@@ -12,6 +12,7 @@ when in doubt, it is short.
 - [Sound](#sound)
 - [MIDI](#midi)
 - [Settings](#settings)
+- [The key and the circle of fifths](#the-key-and-the-circle-of-fifths)
 - [Memory and flash](#memory-and-flash)
 - [Build options](#build-options)
 
@@ -166,6 +167,23 @@ change of size or a broken save reads as "nothing saved": start from your defaul
 **Save when nothing sounds.** Erasing the sector holds the interrupts off for tens of milliseconds: the sound
 drops out. `dinghy.c` saves 2 s after the last change, once all voices are silent. Flash wears out after about
 100,000 erases of a sector: never save in a loop.
+
+## The key and the circle of fifths
+
+[fifths.h](../firmware/src/fifths.h): pure integer functions from maku, cut to one scale (major). The app keeps `root`
+(0..11, C = 0); `OCT-` / `OCT+` are the circle of fifths, not the keys' range. There is no scale to choose.
+
+| | |
+| --- | --- |
+| `fifths_step(root, dir)` | the new root: `dir > 0` a fifth up (a sharp more), `dir < 0` a fifth down (a flat more); 12 steps are the identity |
+| `fifths_resig(n, from, to)` | MIDI note `n` after a step: it keeps its pitch, only the one note the signature changes moves a semitone (C to G: F becomes F#). A note off the old scale stays as played |
+| `fifths_in_key(n, root)` | is `n` in the key |
+| `fifths_signature(root)` | +n sharps / -n flats (for the display) |
+| `fifths_degree(base, d)` | scale degree `d` (7 = the octave) to a note: cannot be out of key |
+
+A step is a change of key signature, not a transposition: what already sounds or was played is not retuned, what starts
+after the step is built on the new root. maku does it this way (`docs/AMBIENT.md`); t8lab moves its bass stock by 7
+semitones instead, which suits a stock of notes but not a phrase in progress. Test: `tests/fifths_test.c`.
 
 ## Memory and flash
 
