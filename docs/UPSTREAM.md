@@ -17,6 +17,8 @@ A firmware built on niwa takes niwa's updates with an ordinary `git merge upstre
 upstreams; niwa takes their changes in, tests them together, and passes them on. `tools/upstream.py` is niwa's tool: a firmware
 built on niwa does not run it (its own `tools/build.py` differs from niwa's by design). A firmware's own changes stay out of
 niwa's files: what it needs there is a change to make in niwa. [LOFI](https://github.com/okumurari2/lofi) is the first.
+`CLAUDE.md` tells whoever works in such a firmware (a person or Claude) to make the change in niwa, and `tools/check_owned.py` (run in
+its CI) fails when a niwa file was changed there instead: the list is `tools/niwa_owned.txt`.
 
 ## Why a recorded copy, and not a git merge
 

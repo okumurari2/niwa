@@ -13,3 +13,4 @@
 - 2026-10-13: battery.h = maku の BATTERY LOW/EMPTY(しきい値 531/561/591、5 秒保持後、1本落ちたら即、以後 2 分ごと、USB ホスト中と未計測は出さない)。時刻の差は符号付き(LESSONS 6)でテストした
 - 2026-10-13: LED AUTO(DIM LO)は入れていない - niwa の fm1_input.h(SLOOP 由来)に DIM LO がなく、maku / Felucca の HAL が要る。tools/upstream.json の fm1_input.h(adopt: later)と合わせて、LOFI が LED を使うときに
 - 2026-10-13: LOFI(okumurari2/lofi)を niwa の履歴ごと取り込んで開始(upstream=niwa、空の初期コミットとは unrelated-histories でマージ)。LOFI の差分: lofi.c(APP_NAME・SETTINGS_MAGIC を定義)、build.py の APP/ID_BASE(FM-1_96N)、run_host.sh の APP、README、LICENSING の追記、CI から upstream 検査を外した、niwa のロゴを外した。そのために niwa 側へ APP / ID_BASE / SETTINGS_MAGIC の上書きを入れた
+- 2026-10-13: niwa から作ったプロジェクトは niwa のファイルを直接変えない: CLAUDE.md(作業の指示。niwa 側で直して upstream から merge)、tools/niwa_owned.txt(niwa のファイル一覧)、tools/check_owned.py(直前に merge した niwa のコミットと比べる。CI で回す)

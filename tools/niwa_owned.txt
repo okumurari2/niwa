@@ -1,0 +1,44 @@
+# The files that belong to niwa. A firmware built on niwa does not change them: it changes them in niwa and merges (CLAUDE.md).
+# One path or directory (ending in /) per line. Not here, because a firmware sets its own: tools/build.py (APP, ID_BASE),
+# tests/run_host.sh (APP), tests/run_tests.sh, docs/decisions.md, README.md, LICENSING.md, .github/, assets/logo*.
+firmware/hal/
+firmware/loader/
+firmware/crt0.S
+firmware/app.ld
+firmware/src/platform.c
+firmware/src/gfx.c
+firmware/src/quad.h
+firmware/src/soft.h
+firmware/src/battery.h
+firmware/src/fifths.h
+firmware/src/usb.c
+firmware/src/ota.c
+firmware/src/lcd.c
+firmware/src/libc.c
+firmware/src/recovery.c
+firmware/src/bootguard.h
+firmware/src/uac_fir.h
+tools/gen_aa_font.py
+tools/aa_raster.py
+tools/gen_ui_palettes.py
+tools/fm1_install.py
+tools/fm1pkg_make.py
+tools/lz4blk.py
+tools/get_toolchain.sh
+tools/check_owned.py
+tools/niwa_owned.txt
+tests/host.c
+tests/fifths_test.c
+tests/soft_test.c
+tests/battery_test.c
+tests/text_spacing_test.py
+assets/fonts/
+docs/PHILOSOPHY.md
+docs/UI.md
+docs/LESSONS.md
+docs/HARVEST.md
+docs/UPSTREAM.md
+docs/API.md
+docs/RULES.md
+docs/MAKE-IT-YOURS.md
+CLAUDE.md
