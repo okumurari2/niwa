@@ -1,3 +1,6 @@
+> **niwa**：maku・t8lab の UI と作法を流用する CFW のための共通基盤。土台は下の Dinghy。
+> 共通化した知見：[設計哲学](docs/PHILOSOPHY.md)・[UI システム](docs/UI.md)・[踏んだエラー](docs/LESSONS.md)・[maku から何を持ってくるか](docs/HARVEST.md)・[決めたこと](docs/decisions.md)
+
 <p align="center"><img src="assets/logo.svg" width="96" alt="Dinghy"></p>
 
 # Dinghy
