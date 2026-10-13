@@ -6,3 +6,4 @@
 - 2026-10-13: 土台の参照元は「記録つきの複製」: tools/upstream.json と tools/upstream.py(LOCAL=niwa 側の未記録の変更、MOVED=上流の変更)、docs/UPSTREAM.md。niwa は SLOOP 8fad1a1 とほぼ同一(36ファイル中29が同一)、Felucca 1.5.6 の方が新しい所は adopt:later で一覧化。今回は Felucca 1.5.x から何も取り込まない - ローダと USB は本体を壊しうるのに、ここでは実機で試せない
 - 2026-10-13: felucca-bsp は上流に入れない(単体ビルド不可・ライセンス仮・「リリースを作るな」と明記)。ビルドできてライセンスが確定したら3つ目の上流として hal/ loader/ usb.c ota.c を1ディレクトリずつ移す。LOFI は niwa だけを upstream にする
 - 2026-10-13: 五度圏は fifths.h に入れたまま(長調1つ)。Felucca の作者への確認は項目から外した
+- 2026-10-13: ロゴ=波(砂紋)+石+新芽、薄紫 #B08AF9 / 石 #E8E8EC / 地 #0F0E13。原画は Gemini、svg は potrace で起こした(元画像との差は 0.2% の画素)。32px でも読める(新芽は小さい)。ライセンスは未定(LICENSING.md)

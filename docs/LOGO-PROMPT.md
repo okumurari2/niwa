@@ -1,5 +1,7 @@
 # niwa のロゴ：Gemini 向けプロンプト
 
+> 2026-10-13: 案(2)（波＋石＋新芽）で作成済み。`assets/logo.png`（原画）、`logo.svg` / `logo-mark.svg`（背景なし、potrace で起こした3色のパス）。この文書は、作り直すとき用に残す。
+
 niwa（庭）のロゴを作るためのプロンプト。そのまま Gemini（画像生成）に貼る。
 できた画像は `assets/logo.png`（1024 px 角）と `assets/logo.svg` に置く。置いたら `LICENSING.md`「The logo」を直す（作った人・ライセンス）。
 

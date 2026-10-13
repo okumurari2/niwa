@@ -22,9 +22,12 @@ complete source under the same licence too.
 
 ## The logo
 
-niwa's logo (`assets/logo.*`) is made for niwa and is not in the tree yet; until then there is none. Dinghy's logo, the
-designburg signet, was Copyright (C) designburg, all rights reserved, not under the GPL, and marks Dinghy only: it is removed
-from niwa. A firmware built on niwa uses its own logo.
+`assets/logo.png` (the original, 1024 px) and `assets/logo.svg` / `logo-mark.svg` (traced from it: three flat colours, the mark
+alone without the background in `logo-mark.svg`) were made for niwa by okumurari2, the image generated with Gemini. **The
+licence of the logo is not stated yet** (open: GPL-3.0-only like the rest, or for niwa itself only, as Dinghy's was; a
+machine-generated image may also not be protected by copyright in some countries). Until it is stated, use it only to refer to niwa.
+Dinghy's logo, the designburg signet (Copyright (C) designburg, all rights reserved), is not in this tree. A firmware built on
+niwa uses its own logo.
 
 ## Trademarks
 

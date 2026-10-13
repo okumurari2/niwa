@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo.svg" width="128" alt="niwa"></p>
+
 # niwa
 
 **The common base for firmware on the M-VAVE FM-1: the plumbing, the screen system and the manners, so that a new firmware starts with the part it is about.**
