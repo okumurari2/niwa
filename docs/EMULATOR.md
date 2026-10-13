@@ -10,6 +10,9 @@ web/emu/build.sh             -> build/emu/   (APP=lofi web/emu/build.sh for anot
 python3 -m http.server -d build/emu          then open http://localhost:8000/
 ```
 
+Published on GitHub Pages by `.github/workflows/emulator.yml` (every push to main; set Settings > Pages > Source to "GitHub Actions"
+once). It builds with `APP` (the workflow's `env`), runs `emu_test.mjs` (a failing check stops the deploy), and uploads `build/emu`.
+
 ## The parts
 
 | file | whose | what |

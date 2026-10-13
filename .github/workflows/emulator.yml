@@ -1,0 +1,56 @@
+name: Emulator (GitHub Pages)
+
+# The firmware in a browser (web/emu, docs/EMULATOR.md), published on every push to main. One-time setting: the repository's
+# Settings > Pages > Source = "GitHub Actions". A firmware built on niwa sets APP (its firmware/src/APP.c, which needs APP_STEPPED).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  APP: niwa
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install Pillow
+      - name: clang (wasm32) and wasm-ld
+        run: sudo apt-get update && sudo apt-get install -y clang lld
+      - name: Build the emulator
+        run: sh web/emu/build.sh
+        env:
+          EMU_PREVIEW: "0"
+      - name: Check it boots
+        run: node web/emu/emu_test.mjs build/emu/${{ env.APP }}.wasm
+      - name: Assemble the site
+        run: |
+          mkdir -p _site
+          cp -r build/emu/. _site/
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
