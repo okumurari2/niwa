@@ -1,0 +1,28 @@
+name: ci
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "17 5 * * 1"          # Mondays: have the upstreams moved? (docs/UPSTREAM.md)
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install Pillow
+      - run: sh tests/run_tests.sh          # no FM-1 and no toolchain: the host tests, the screen, the text spacing
+      - run: python3 tools/upstream.py check      # LOCAL (a platform file changed without a note) fails; MOVED only informs
+  target:
+    # The build for the FM-1 itself: a change that only the real chip's compiler rejects (the hardware half of platform.c is
+    # not compiled on a computer: docs/LESSONS.md 21). Needs the JieLi toolchain and 3 files of the AC79 SDK.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install Pillow
+      - run: tools/get_toolchain.sh
+      - run: git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git ~/fw-AC79_AIoT_SDK
+      - run: JIELI_TOOLCHAIN=$HOME/.jieli/toolchain ./build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: niwa.fwsc
+          path: build/niwa.fwsc

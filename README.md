@@ -15,7 +15,10 @@ The idea of the instruments built on it: **they play by themselves, they do not 
 ```
 firmware/src/niwa.c       <- the app: ~200 lines, a 4-voice sine. A firmware built on niwa replaces it.
 firmware/src/platform.c   <- the plumbing (boot, USB, updates, audio ISR, settings). Done; read it, don't fight it.
+firmware/src/gfx.c, quad.h<- the screen system (from maku): colours by role, Inter Tight, the 2 x 2 layout
 firmware/src/fifths.h     <- the key and OCT- / OCT+ as the circle of fifths (from maku)
+firmware/src/soft.h       <- a gentle power-on and a gentle flash erase (from maku): no shout, no click
+firmware/src/battery.h    <- BATTERY LOW / EMPTY as a message, and nothing else (from maku)
 firmware/src/*.c, hal/    <- the FM-1 platform of Felucca, as SLOOP carries it. tools/upstream.py watches its upstreams.
 docs/                     <- the screen system (UI.md), the lessons (LESSONS.md), the philosophy, the API
 ```
@@ -26,10 +29,12 @@ Credits and licences: [LICENSING.md](LICENSING.md).
 
 <p align="center"><img src="docs/screen.png" width="240" alt="niwa's screen: the name, the note played, a keyboard with the keys that sound"></p>
 
-> **Status: not flashed yet.** niwa is Dinghy 0.3 renamed. As Dinghy, the platform was tested on the device: the install, MIDI in
-> (pitch exact, 4 voices), USB audio at 44.1 / 48 kHz, the keys, the screen, the octave kept in flash, and back to another
-> firmware through the hub. What niwa changed since (its name, the package identity `FM-1_95N`, the settings magic, `fifths.h`)
-> has been built and run on a computer (`tests/run_host.sh`, `tests/fifths_test.c`), not on an FM-1.
+> **Status: builds and runs on a computer; not flashed yet.** niwa is Dinghy 0.3 renamed, plus the screen system of maku, the
+> circle of fifths, a gentle power-on and a gentle flash erase, and a battery notice. `./build.sh` makes `build/niwa.fwsc`
+> (66.5 KB of the 568 KB slot; identity `FM-1_950`) and `tests/run_tests.sh` passes. As Dinghy, the platform was tested on the
+> device: the install, MIDI in (pitch exact, 4 voices), USB audio at 44.1 / 48 kHz, the keys, the screen, the octave kept in flash,
+> and back to another firmware through the hub. Everything niwa changed since has not been on an FM-1: **flash it only with a way
+> back** (the USB rescue: hold OCT- at power-on; the hub's *Return to official V15*).
 
 ## What you get
 
@@ -40,12 +45,20 @@ Credits and licences: [LICENSING.md](LICENSING.md).
 | **USB-MIDI** | In and out, class compliant: `midi_get()`, `midi_send()`. |
 | **USB audio** | The FM-1 shows up as a 16-bit stereo audio input (44.1 or 48 kHz): record it into any DAW or phone. Nothing to do. |
 | **Panel** | 27 keys, 14 buttons, 7 encoders, the MASTER knob, the LEDs, by name (`BTN_PLAY`, `ENC_KNOB1`, ...). |
-| **Screen** | 240 x 240, text in two sizes, rectangles, lines, pixels. |
+| **Screen** | 240 x 240, anti-aliased Inter Tight in three sizes, colours from a palette by role (tokens), canvases. The 2 x 2 layout of maku: [docs/UI.md](docs/UI.md). |
 | **Settings** | `settings_load()` / `settings_save()`: up to 256 bytes with a CRC in their own flash sector. |
 | **A crash screen** | A fault shows where it happened (the PC), then the FM-1 restarts. |
 | **Host mode** | The same `niwa.c` on your computer: the screen as an image, the sound as a WAV. No FM-1 needed to try an idea. |
 | **The key** | `fifths.h`: OCT- / OCT+ as the circle of fifths, a change of key signature that leaves what already plays alone. One scale, no choosing. |
 | **Checks** | The build fails on what bricks or breaks an FM-1 firmware: a 64-bit division, a call into the chip ROM, too much RAM, a register touched outside `hal/`. |
+
+## Tests
+
+```sh
+sh tests/run_tests.sh     # the host tests (Python 3 with Pillow, a C compiler): the key, the fades, the battery notice,
+                          # the screen (it must not blank when a knob turns), the text spacing
+./build.sh                # the build for the FM-1 (needs the toolchain and the SDK: step 2 below)
+```
 
 ## Build your own
 

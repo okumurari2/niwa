@@ -5,6 +5,7 @@ maku の画面・LED の作法（maku `docs/UI_RULES.md`）を、MAKU 固有の�
 
 - 凡例：**[必須]** 変えると様式が崩れるか、過去に不具合を出したもの。**[既定]** 理由があれば変えてよい値。
 - 破るときは、その CFW の `docs/decisions.md` に理由を1行残す。
+- niwa の実装：画面の道具は `firmware/src/gfx.c`、2×2 の骨組みは `firmware/src/quad.h`、使い方の例は `niwa.c`（[API.md](API.md)「Screen」）。起動時のフェードインと消去の凹みは `soft.h`、電池の通知は `battery.h`。
 - 実装の出どころは maku `73d9d1a`（`firmware/src/ui_maku.c`、`gfx.c`、`tools/gen_ui_palettes.py`、`tools/gen_aa_font.py`）。
   niwa への取り込みの範囲は [HARVEST.md](HARVEST.md)。
 

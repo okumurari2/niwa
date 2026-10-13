@@ -148,10 +148,28 @@ def build_loader():
     return ota
 
 
+# ---- generated headers (the UI fonts and palettes: docs/UI.md)
+
+def generate():
+    GEN.mkdir(parents=True, exist_ok=True)
+    tools = SRC / "tools"
+    cmds = [[tools / "gen_aa_font.py", GEN / "ui_fonts.h", "--preset", "inter-tight"],
+            [tools / "gen_ui_palettes.py", GEN / "ui_palettes.h"]]
+    procs = [subprocess.Popen([sys.executable, *map(str, c)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              text=True) for c in cmds]
+    failed = []
+    for c, p in zip(cmds, procs):
+        sys.stdout.write(p.communicate()[0])
+        if p.returncode:
+            failed.append(c[0].name)
+    if failed:
+        raise SystemExit(f"build: {', '.join(failed)} failed")
+
+
 # ---- app
 
 def build_app():
-    flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", "-Ifirmware/gen", f'-DFELUCCA_ID="{PRODUCT}"', f'-DAPP_VER="{VERSION or "0.0"}"']
+    flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", f"-I{GEN}", f'-DFELUCCA_ID="{PRODUCT}"', f'-DAPP_VER="{VERSION or "0.0"}"']
     cmds = [("cc", "-c", FW / "crt0.S", "-o", OUT / "crt0.o"),
             ("cc", "-c", FW / "hal" / "fm1_vec.S", "-o", OUT / "fm1_vec.o"),
             ("cc", "-c", FW / "hal" / "fm1_isr.S", "-o", OUT / "fm1_isr.o"),
@@ -286,6 +304,7 @@ def main():
         if hashlib.sha256(fm1pkg_make.sdk_file(rel)).hexdigest() != sha:
             print(f"warning: SDK {rel} differs from AC79NN_SDK_V1.2.1; the package will not match the reference")
     OUT.mkdir(parents=True, exist_ok=True)
+    generate()
     ota = build_loader()
     img, syms, dis, rt = build_app()
     errors, notes = check(img, syms, dis, rt)

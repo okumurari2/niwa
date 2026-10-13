@@ -8,7 +8,7 @@
  *   USB-MIDI            in and out (midi_get, midi_send)
  *   USB audio           the output as a class-compliant 16-bit stereo input, 44.1 or 48 kHz
  *   keys, knobs, LEDs   fm1_in.notes / buttons, fm1_input_edges, fm1_enc_take, fm1_led_key (hal/fm1_input.h)
- *   screen              240 x 240, lcd_fill, draw_text_box with FONT_S (16 px) / FONT_L (32 px) (gfx.c)
+ *   screen              240 x 240, lcd_fill, the T_* colours, text in three sizes (AF_S / AF_M / AF_L), canvases (gfx.c, docs/UI.md)
  *   settings            one 4 KiB flash sector with a CRC (settings_load / settings_save)
  *   crash screen        the PC of a fault, then a reboot
  *
@@ -22,6 +22,7 @@ enum { BTN_OCT_DOWN = 0, BTN_OCT_UP = 1, BTN_FX = 2, BTN_SEL = 3, BTN_ENV = 4, B
        BTN_GLO = 7, BTN_HOME = 8, BTN_SAVE = 9, BTN_ARP = 10, BTN_SEQ = 11, BTN_PLAY = 12, BTN_REC = 13 };
 enum { ENC_SELECT = 0, ENC_ALGORITHM = 1, ENC_KNOB1 = 2, ENC_KNOB2 = 3, ENC_KNOB3 = 4, ENC_KNOB4 = 5, ENC_PRESETS = 6 };
 #define KEY_LED(k) (14u + (k))
+#include "battery.h"                            /* battery_notice(): BATTERY LOW / EMPTY as a message, nothing else (MANNER:battery) */
 
 #ifdef NIWA_HOST
 #include "../../tests/host.c"                  /* on a computer: a fake FM-1 (tests/host.c) */
@@ -54,10 +55,11 @@ static volatile uint32_t fm1_ms;                /* milliseconds since power-on (
 #define RING_PUBLISH() __asm__ volatile("" ::: "memory")
 #include "libc.c"
 #include "lcd.c"
-#define CV_MAX (240u * 64u)                     /* the biggest text box drawn at once */
+#define CV_MAX (240u * 124u)                    /* the biggest canvas: 240 x 124 (a quadrant is 119 x 119) */
 #include "gfx.c"
 
 #define FS 44100u                               /* the sample rate */
+#include "soft.h"                               /* the swell at power-on, the dip around a flash erase (MANNER:fade-in, MANNER:erase-dip) */
 #define HALF_FRAMES 256u                        /* I2S half buffer: 5.8 ms (as sloopDX: the USB audio band is set for it) */
 #define HALF_WORDS (HALF_FRAMES * 2u)
 #define FELUCCA_OTA 1
@@ -117,11 +119,11 @@ static void ota_show(uint32_t step, int32_t code)
     static const char *const STEP[] = {"", "PACKAGE", "CHECK HEAD", "LOADER", "CONFIRM", "RESTART"};
     if (recovery_active) return;
     lcd_fill(0, 0, 240, 240, C_BLACK);
-    draw_text_box(0, 92, 240, &FONT_S, "UPDATE", C_WHITE, 1);
+    draw_text_box(0, 92, 240, &AF_M, "UPDATE", C_WHITE, 1);
     if (step < 9u)
-        draw_text_box(0, 124, 240, &FONT_S, STEP[step < 6u ? step : 0], C_WHITE, 1);
+        draw_text_box(0, 124, 240, &AF_M, STEP[step < 6u ? step : 0], C_WHITE, 1);
     else
-        draw_text_box(0, 124, 240, &FONT_S, code == 1 ? "DRY RUN OK" : "FAILED", C_WHITE, 1);
+        draw_text_box(0, 124, 240, &AF_M, code == 1 ? "DRY RUN OK" : "FAILED", C_WHITE, 1);
 }
 static void ota_commit(const uint8_t *parm)
 {
@@ -163,7 +165,12 @@ static int settings_save(const void *p, uint32_t n)   /* p in RAM, n <= 256 */
     if (!flash_ok || n > 256u)
         return -1;
     h[2] = crc32(p, n);
-    if ((rc = fl_erase4k(SETTINGS_AT, &took)) != 0)
+    if (audio_live)                             /* MANNER:erase-dip: out and played to silence, so the stop is a dip, not a click */
+        soft_down_wait();
+    rc = fl_erase4k(SETTINGS_AT, &took);
+    if (audio_live)
+        soft_up();
+    if (rc != 0)
         return rc;
     if ((rc = fl_write(SETTINGS_AT + sizeof h, p, n)) != 0)
         return rc;
@@ -243,15 +250,21 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
         }
         for (b = 0; b < HALF_FRAMES; b += 32u)
             uac_tap(o + 2u * b, 32u);           /* the computer records what the speaker plays */
+        soft_apply(o, HALF_FRAMES);             /* the swell, the dip: the DAC only, USB has its copy */
         for (i = 0; i < HALF_WORDS; i++)
             o[i] <<= 7;
         fm1_audio_ack_half();
+        audio_halves++;
     }
     in_audio = 0;
 }
 extern void isr_alnk0(void);
 
 /* ---- the main loop's duties: watchdog, USB, the installer's update request, the MASTER knob */
+/* the battery, for battery_notice(): the filtered ADC value (0 until the first reading), and whether a USB host powers the unit */
+static int32_t batt_avg;
+static int32_t fm1_battery(void) { return batt_avg; }
+static int fm1_usb_powered(void) { return usb.config && !usb.suspended; }
 static void platform_poll(void)
 {
     static int32_t knob_avg = 512 * 16;
@@ -267,7 +280,7 @@ static void platform_poll(void)
     if (usb.uboot_req) {
         fm1_audio_stop();
         lcd_fill(0, 0, 240, 240, C_BLACK);
-        draw_text_box(0, 110, 240, &FONT_S, "UBOOT (USB)", C_WHITE, 1);
+        draw_text_box(0, 110, 240, &AF_M, "UBOOT (USB)", C_WHITE, 1);
         usb_detach();
         fm1_delay_ms(30);
         bootguard.pending = 0;
@@ -275,6 +288,7 @@ static void platform_poll(void)
     }
     if (fm1_ms >= 30000u && bootguard.pending)
         bootguard_clear(&bootguard);            /* 30 s up: this firmware boots */
+    batt_avg = battery_filter(batt_avg, fm1_adc_read(FM1_ADC_BATT));
     if ((a = fm1_adc_read(FM1_ADC_MASTER)) >= 0) {
         uint32_t k10;
         knob_avg += (a * 16 - knob_avg) / 8;
@@ -289,12 +303,12 @@ static void fm1_fault(const fm1_crash_t *c)
     uint32_t i, t0, v[3] = {c->vec, c->pc, c->rets};
     fm1_audio_stop();
     lcd_fill(0, 0, 240, 240, RGB(160, 0, 0));
-    draw_text_box(0, 20, 240, &FONT_S, APP_NAME " CRASH", C_WHITE, 1);
+    draw_text_box(0, 20, 240, &AF_M, APP_NAME " CRASH", C_WHITE, 1);
     for (i = 0; i < 3u; i++) {
         uint32_t k;
         for (k = 0; k < 8u; k++) b[k] = "0123456789ABCDEF"[(v[i] >> (28u - 4u * k)) & 15u];
         b[8] = 0;
-        draw_text_box(10, 60 + i * 20, 220, &FONT_S, b, C_WHITE, 0);
+        draw_text_box(10, 60 + i * 20, 220, &AF_S, b, C_WHITE, 0);
     }
     t0 = fm1_ticks();
     while ((uint32_t)(fm1_ticks() - t0) < 8000u * 1000u * FM1_TICKS_PER_US)
@@ -332,7 +346,9 @@ void fm1_cstart(void)
     lcd_fill(0, 0, 240, 240, C_BLACK);
     fm1_input_init();
     fm1_adc_init();
+    soft_fade_in();                             /* MANNER:fade-in: the first 0.8 s swell from silence (soft.h) */
     fm1_audio_init(abuf, HALF_WORDS, isr_alnk0, 3);   /* (abuf is zero: .bss) */
+    audio_live = 1;
     usb_start();
     fm1_timer5_start(isr_timer5, 4);
     fm1_guard_lock_top();

@@ -280,8 +280,8 @@
   "firmware/src/gfx.c": {
    "from": "sloop",
    "adopt": "",
-   "note": "LOCAL, TO BE REPLACED: docs/HARVEST.md step 1 takes maku's gfx.c in its place (the AA fonts, the T_* tokens).",
-   "sha256": "a8d9d5921fd28971",
+   "note": "LOCAL, no longer SLOOP's: maku's gfx.c cut down to what the 2 x 2 screen needs (docs/HARVEST.md step 1, from maku 73d9d1a; docs/UI.md). Track maku, not SLOOP.",
+   "sha256": "1fe5bc1800d6fea5",
    "upstream": {
     "sloop": "cbdd00534b5c602c",
     "felucca": "7b576eb024b87f29"
@@ -324,8 +324,8 @@
   "firmware/src/recovery.c": {
    "from": "sloop",
    "adopt": "",
-   "note": "LOCAL: the rescue screen says APP_NAME instead of SLOOP. SLOOP's file; Felucca has none.",
-   "sha256": "f2c7c0c0fd1592f8",
+   "note": "LOCAL: the rescue screen says APP_NAME instead of SLOOP, and uses the AF_ faces (gfx.c). SLOOP's file; Felucca has none.",
+   "sha256": "7d1b4060dcad19ce",
    "upstream": {
     "sloop": "eeb80e386e92c19f",
     "felucca": null
@@ -357,8 +357,8 @@
   "tools/build.py": {
    "from": "sloop",
    "adopt": "",
-   "note": "LOCAL: niwa's names, identity FM-1_95N, the checks.",
-   "sha256": "512d00055b847bf4",
+   "note": "LOCAL: niwa's names, identity FM-1_95N, the checks, the generation of the UI fonts and palettes.",
+   "sha256": "bf5282338d45813a",
    "upstream": {
     "sloop": "8b42493b5d794bc9",
     "felucca": "35150f31225210fe"

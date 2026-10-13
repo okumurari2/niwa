@@ -7,3 +7,8 @@
 - 2026-10-13: felucca-bsp は上流に入れない(単体ビルド不可・ライセンス仮・「リリースを作るな」と明記)。ビルドできてライセンスが確定したら3つ目の上流として hal/ loader/ usb.c ota.c を1ディレクトリずつ移す。LOFI は niwa だけを upstream にする
 - 2026-10-13: 五度圏は fifths.h に入れたまま(長調1つ)。Felucca の作者への確認は項目から外した
 - 2026-10-13: ロゴ=波(砂紋)+石+新芽、薄紫 #B08AF9 / 石 #E8E8EC / 地 #0F0E13。原画は Gemini、svg は potrace で起こした(元画像との差は 0.2% の画素)。32px でも読める(新芽は小さい)。ライセンスは未定(LICENSING.md)
+- 2026-10-13: HARVEST 手順1〜4を実施。gfx.c を maku のものに置き換え(AF_S/M/L と T_* トークン。キーキャップ・アイコン・角丸・スタイル・テスト用フックは持ってこない)、レスキュー・更新・クラッシュ画面は AF_M/AF_S で黒地(パレットに依らない: draw_text_box)。niwa の既定パレットは VIOLET(ロゴの薄紫に近い)。実機向けビルド(ツールチェーン+SDK)で niwa.fwsc 66,512 B まで通した。ホストのテストと同じ頻度で回すこと(LESSONS 21)
+- 2026-10-13: quad.h = 2×2 の画面の骨組み(maku ui_maku.c の mq_macro / mq_gauge を一般化)。niwa.c の例: 左上=いま(音名・オクターブ・電池通知)、SELECT=LEVEL、PRESETS=RELEASE、ALGORITHM は空き。つまみ1ノッチ=2、0..127。ホスト検査「起動後に全画面を塗らない」で LESSONS 1 を固定
+- 2026-10-13: soft.h = 起動 0.8 秒のフェードインと、フラッシュ消去前後の凹み(10 ms で下げ、DAC が無音を鳴らしきるのを待ち、消去、25 ms で戻す)。settings_save を包む。USB オーディオには掛けない(uac_tap の後に適用)。音声割り込みでの追加は1ブロックあたり比較1回(ユニティ時)。実機で聞いていない
+- 2026-10-13: battery.h = maku の BATTERY LOW/EMPTY(しきい値 531/561/591、5 秒保持後、1本落ちたら即、以後 2 分ごと、USB ホスト中と未計測は出さない)。時刻の差は符号付き(LESSONS 6)でテストした
+- 2026-10-13: LED AUTO(DIM LO)は入れていない - niwa の fm1_input.h(SLOOP 由来)に DIM LO がなく、maku / Felucca の HAL が要る。tools/upstream.json の fm1_input.h(adopt: later)と合わせて、LOFI が LED を使うときに

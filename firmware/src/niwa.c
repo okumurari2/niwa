@@ -15,6 +15,7 @@
 
 /* ---- the sound (runs in the audio ISR: keep it short, no flash, no screen) */
 #define NV 4u                                   /* voices */
+static volatile int32_t rel_dec = 6;            /* how fast a released voice dies (per frame, of 11430): the RELEASE knob */
 static struct {
     volatile uint32_t inc;                      /* phase step per frame: f * 2^32 / 44100 */
     volatile int32_t gate;                      /* target level, Q15: 0 = released */
@@ -43,7 +44,7 @@ static void app_audio(int32_t *out, uint32_t n)
         for (i = 0; i < n; i++) {
             int32_t s;
             if (amp < g) { amp += 48; if (amp > g) amp = g; }        /* attack ~5 ms */
-            else if (amp > g) { amp -= 6; if (amp < g) amp = g; }    /* release ~45 ms */
+            else if (amp > g) { amp -= rel_dec; if (amp < g) amp = g; }  /* release */
             ph += step;
             s = (sine(ph) * amp) >> 15;
             out[2u * i] += s;                   /* L */
@@ -58,7 +59,7 @@ static void app_audio(int32_t *out, uint32_t n)
 static const uint32_t INC_C9[12] = {            /* MIDI 120..131 (C9..B9); lower octaves shift right */
     815363807u, 863847862u, 915214929u, 969636441u, 1027294024u, 1088380105u,
     1153098554u, 1221665363u, 1294309365u, 1371273005u, 1452813141u, 1539201906u};
-static uint32_t ages, last_note = 255;
+static uint32_t ages, last_note = 255, level = 127;   /* level: the LEVEL knob, 0..127 */
 
 static void play(uint32_t note, uint32_t vel)
 {
@@ -72,7 +73,7 @@ static void play(uint32_t note, uint32_t vel)
     voice[pick].note = (uint8_t)note;
     voice[pick].age = ++ages;
     voice[pick].inc = INC_C9[note % 12u] >> (10u - note / 12u);
-    voice[pick].gate = (int32_t)(vel * 90u);    /* 127 -> 11430: four voices stay under full scale */
+    voice[pick].gate = (int32_t)(vel * 90u * level / 127u);   /* 127 -> 11430: four voices stay under full scale */
     last_note = note;
 }
 static void stop(uint32_t note)
@@ -90,64 +91,54 @@ static int quiet(void)                          /* nothing sounds, not even a re
     return 1;
 }
 
-/* ---- the screen: the name, the last note big, the keyboard with what sounds, the octave */
-#define C_ACC RGB(180, 140, 255)                /* lilac */
-#define C_KEY RGB(210, 210, 210)
-#define C_OFF RGB(90, 90, 90)
 #define KEY0 53u                                /* key 0 = F3 */
-static int black(uint32_t note) { return (0x54Au >> (note % 12u)) & 1u; }
 
-static void draw_note(void)
+/* ---- the screen: docs/UI.md. Top left is "now" (the note, the octave); SELECT, PRESETS and ALGORITHM are the three knobs
+ * at the left of the panel, each showing what it moves (quad.h). A knob moves a value 0..127, right = more. */
+#include "quad.h"
+static const char *msg;                         /* a message in the place of the name, for ~2 s (UI.md 6): 0 = none */
+static uint32_t msg_until;
+static void draw_now(uint32_t note, int32_t oct)
 {
     static const char *const NAME[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-    char s[8] = "-";
-    if (last_note < 128u) {
-        const char *p = NAME[last_note % 12u];
+    char s[8] = "-", o[10] = "OCTAVE +0";
+    cv_begin(QUAD, QUAD, T_BG);
+    if (msg)
+        cv_text(6, 6, &AF_S, msg, T_ACCENT);
+    else
+        cv_text(6, 6, &AF_S, APP_NAME, T_DIM);
+    if (note < 128u) {
+        const char *p = NAME[note % 12u];
         uint32_t i = 0;
         while (*p) s[i++] = *p++;
-        if (last_note >= 12u) s[i++] = (char)('0' + last_note / 12u - 1u);
+        if (note >= 12u) s[i++] = (char)('0' + note / 12u - 1u);
         s[i] = 0;
     }
-    draw_text_box(0, 82, 240, &FONT_L, s, C_WHITE, 1);
+    cv_text_in(0, 36, QUAD, &AF_L, s, T_TEXT, T_BG);
+    o[7] = oct < 0 ? '-' : '+';
+    o[8] = (char)('0' + (oct < 0 ? -oct : oct));
+    cv_text_in(0, 92, QUAD, &AF_S, o, T_MID, T_BG);
+    cv_blit(0, 0);
 }
 
-static void draw_keys(uint32_t lit)             /* bit k: key k sounds */
+static int32_t knob(int32_t v, uint32_t enc)    /* a knob moves a value 0..127: 2 per detent */
 {
-    uint32_t k, w = 0;
-    cv_begin(240, 56, C_BLACK);
-    for (k = 0; k < 27u; k++)                   /* 16 white keys of 14 px from x = 8 */
-        if (!black(KEY0 + k)) {
-            cv_rect(8 + (int32_t)w * 14, 0, 13, 56, lit >> k & 1u ? C_ACC : C_KEY);
-            w++;
-        }
-    for (k = 0, w = 0; k < 27u; k++)            /* the black ones on the line between two white */
-        if (black(KEY0 + k))
-            cv_rect(8 + (int32_t)w * 14 - 5, 0, 9, 34, lit >> k & 1u ? C_ACC : C_BLACK);
-        else
-            w++;
-    cv_blit(0, 140);
-}
-
-static void draw_status(int32_t oct)
-{
-    char s[12] = "OCTAVE +0";
-    s[7] = oct < 0 ? '-' : '+';
-    s[8] = (char)('0' + (oct < 0 ? -oct : oct));
-    draw_text_box(0, 212, 240, &FONT_S, s, C_OFF, 1);
+    v += fm1_enc_take(enc) * 2;
+    return v < 0 ? 0 : v > 127 ? 127 : v;
 }
 
 static void app_main(void)
 {
-    struct { int8_t oct; } set = {0};           /* what survives a power-off (add yours, up to 256 bytes) */
-    uint32_t prev = 0, k, t_change = 0, dirty = 0, lit_drawn = ~0u, note_drawn = ~0u;
-    int32_t oct_drawn = 99;
+    struct { int8_t oct; uint8_t level, release; } set = {0, 127, 113};   /* what survives a power-off (add yours, up to 256 bytes) */
+    uint32_t prev = 0, k, t_change = 0, dirty = 0, shown_now = ~0u, shown_quads = ~0u;
     uint8_t held[27] = {0};                     /* the note each key plays */
     settings_load(&set, sizeof set);
     if (set.oct < -2 || set.oct > 2) set.oct = 0;
+    if (set.level > 127u || set.release > 127u) { set.level = 127; set.release = 113; }
 
-    lcd_fill(0, 0, 240, 240, C_BLACK);
-    draw_text_box(0, 18, 240, &FONT_L, APP_NAME, C_ACC, 1);
-    draw_text_box(0, 52, 240, &FONT_S, "a sine to build on  v" APP_VER, C_OFF, 1);
+    palette_set(UI_DEFAULT_PALETTE);
+    lcd_fill(0, 0, 240, 240, T_BG);
+    quad_dividers();
 
     for (;;) {
         uint32_t keys, down, up, rel, b, lit = 0, base = (uint32_t)(KEY0 + 12 * set.oct);
@@ -166,6 +157,11 @@ static void app_main(void)
         b = fm1_input_edges(&rel);              /* buttons pressed since the last call (bit = button id) */
         if (b & (1u << BTN_OCT_DOWN) && set.oct > -2) { set.oct--; dirty = 1; t_change = fm1_ms; }
         if (b & (1u << BTN_OCT_UP) && set.oct < 2) { set.oct++; dirty = 1; t_change = fm1_ms; }
+        k = (uint32_t)knob(set.level, ENC_SELECT);
+        if (k != set.level) { set.level = (uint8_t)k; level = k; dirty = 1; t_change = fm1_ms; }
+        k = (uint32_t)knob(set.release, ENC_PRESETS);
+        if (k != set.release) { set.release = (uint8_t)k; dirty = 1; t_change = fm1_ms; }
+        rel_dec = 48 - (int32_t)set.release * 47 / 127;           /* 0 -> 48 (a click), 127 -> 1 (a long tail) */
 
         while (midi_get(&st, &d1, &d2)) {       /* USB-MIDI in, any channel */
             if ((st & 0xF0u) == 0x90u && d2) play(d1, d2);
@@ -181,9 +177,18 @@ static void app_main(void)
         fm1_led_key(BTN_OCT_DOWN, set.oct < 0);
         fm1_led_key(BTN_OCT_UP, set.oct > 0);
 
-        if (lit != lit_drawn) { lit_drawn = lit; draw_keys(lit); }   /* redraw only what changed */
-        if (last_note != note_drawn) { note_drawn = last_note; draw_note(); }
-        if (set.oct != oct_drawn) { oct_drawn = set.oct; draw_status(set.oct); }
+        if (msg && (int32_t)(fm1_ms - msg_until) >= 0) msg = 0;
+        k = battery_notice(fm1_ms, fm1_battery(), fm1_usb_powered(), msg != 0);           /* MANNER:battery: only when it is low */
+        if (k) { msg = k == BATT_LOW ? "BATTERY LOW" : "BATTERY EMPTY"; msg_until = fm1_ms + 2000u; }
+        k = quad_mix(quad_mix(quad_mix(last_note, (uint32_t)set.oct + 8u), msg != 0), msg ? (uint32_t)msg[8] : 0u);   /* what the screen shows, as a number: redraw on change */
+        if (k != shown_now) { shown_now = k; draw_now(last_note, set.oct); }
+        k = quad_mix(quad_mix(0u, set.level), set.release);
+        if (k != shown_quads) {
+            quad_param_t sel = {"LEVEL", set.level, 0, T_THEME, 0}, pre = {"RELEASE", set.release, 0, T_THEME, 0};
+            shown_quads = k;
+            quad_draw(Q_SELECT, &sel);
+            quad_draw(Q_PRESETS, &pre);              /* ALGORITHM: free for your third knob */
+        }
 
         if (dirty && quiet() && fm1_ms - t_change > 2000u) {   /* 2 s after the change, when silent (an erase stalls the sound) */
             settings_save(&set, sizeof set);

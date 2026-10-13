@@ -29,15 +29,18 @@ static struct { uint32_t notes, buttons; } fm1_in;
 static uint32_t host_edges;
 static uint32_t fm1_input_edges(uint32_t *released) { uint32_t b = host_edges; host_edges = 0; *released = 0; return b; }
 static uint32_t fm1_input_note_edges(void) { return 0; }   /* (the script sets fm1_in.notes) */
-static int32_t fm1_enc_take(uint32_t e) { (void)e; return 0; }
+static int32_t host_enc[8];                     /* detents turned since the last take (the script's "enc" lines) */
+static int32_t fm1_enc_take(uint32_t e) { int32_t d = host_enc[e & 7u]; host_enc[e & 7u] = 0; return d; }
 static void fm1_led_key(uint32_t id, int on) { (void)id; (void)on; }
 
 /* the screen: 240 x 240 RGB565, as the ST7789 gets it (gfx.c sends the bytes swapped) */
 static uint16_t fb[240 * 240];
 static void lcd_sync(void) {}
+static uint32_t host_full;                      /* big fills after start-up: a knob must not blank the screen (docs/LESSONS.md 1) */
 static void lcd_fill(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint16_t c)
 {
     uint32_t i, j;
+    if (w * h >= 240u * 120u && fm1_ms > 100u) host_full++;
     for (j = y; j < y + h && j < 240u; j++)
         for (i = x; i < x + w && i < 240u; i++)
             fb[j * 240u + i] = c;
@@ -52,7 +55,6 @@ static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint1
                 fb[(y + j) * 240u + x + i] = (uint16_t)(c >> 8 | c << 8);
             }
 }
-#define CV_MAX (240u * 64u)
 #include "gfx.c"
 
 static uint8_t host_store[256 + 4];
@@ -81,15 +83,19 @@ static int midi_get(uint8_t *st, uint8_t *d1, uint8_t *d2)
 }
 static void midi_send(uint32_t st, uint32_t d1, uint32_t d2) { printf("%6u ms  MIDI out %02X %u %u\n", fm1_ms, st, d1, d2); }
 
+static int32_t fm1_battery(void) { return 0; }  /* (unknown: no notice) */
+static int fm1_usb_powered(void) { return 0; }
 static void app_audio(int32_t *out, uint32_t n);
 static void app_main(void);
 
 /* the script: at t ms, keys down (bit k = key k, 0 = F3), a button edge, a MIDI message. A script file (the second
- * argument) replaces it, a line each: "T keys MASK" (hex or decimal), "T btn ID", "T midi ST D1 D2", "T end" */
-typedef struct { uint32_t t, keys; int btn; uint8_t st, d1, d2; } host_ev_t;
+ * argument) replaces it, a line each: "T keys MASK" (hex or decimal), "T btn ID", "T enc ID DELTA" (detents), "T midi ST D1 D2", "T end" */
+typedef struct { uint32_t t, keys; int btn; uint8_t st, d1, d2; int8_t enc, dl; } host_ev_t;
 static const host_ev_t SCRIPT0[] = {
     {200, 1u << 7, -1, 0, 0, 0},                                /* C4 */
     {700, 1u << 7 | 1u << 11 | 1u << 14, -1, 0, 0, 0},          /* + E4 G4: a chord */
+    {1200, 0, -1, 0, 0, 0, ENC_SELECT, -24},                    /* SELECT: LEVEL down */
+    {1300, 0, -1, 0, 0, 0, ENC_PRESETS, -40},                   /* PRESETS: RELEASE shorter */
     {1500, 0, -1, 0, 0, 0},
     {1700, 0, -1, 0x90, 81, 120},                               /* MIDI in: A5 */
     {2300, 0, -1, 0x80, 81, 0},
@@ -109,12 +115,13 @@ static void read_script(const char *path)
     uint32_t n = 0;
     if (!f) { perror(path); exit(1); }
     while (fgets(line, sizeof line, f) && n < 4096u) {
-        host_ev_t e = {0, 0, -1, 0, 0, 0};
+        host_ev_t e = {0, 0, -1, 0, 0, 0, 0, 0};
         unsigned a = 0, b = 0, c = 0;
         if (line[0] == '#' || sscanf(line, "%u %15s", &e.t, what) != 2) continue;
         if (!strcmp(what, "end")) { end_ms = e.t; continue; }
         if (!strcmp(what, "keys")) { sscanf(line, "%*u %*s %i", (int *)&e.keys); }
         else if (!strcmp(what, "btn")) { sscanf(line, "%*u %*s %d", &e.btn); }
+        else if (!strcmp(what, "enc")) { int id = 0, dl = 0; sscanf(line, "%*u %*s %d %d", &id, &dl); e.enc = (int8_t)id; e.dl = (int8_t)dl; }
         else if (!strcmp(what, "midi")) { sscanf(line, "%*u %*s %i %u %u", (int *)&a, &b, &c); e.st = (uint8_t)a; e.d1 = (uint8_t)b; e.d2 = (uint8_t)c; }
         else continue;
         ev[n++] = e;
@@ -176,6 +183,8 @@ static void platform_poll(void)                 /* one call = one millisecond */
             mq_w++;
         } else if (script[step].btn >= 0)
             host_edges |= 1u << script[step].btn;
+        else if (script[step].dl)
+            host_enc[script[step].enc & 7] += script[step].dl;
         else
             fm1_in.notes = script[step].keys;
         step++;
@@ -203,6 +212,7 @@ static void platform_poll(void)                 /* one call = one millisecond */
         write_ppm(SHOT[shot++]);
     if (fm1_ms >= end_ms) {
         write_wav();
+        if (host_full) { printf("FAIL: the screen was cleared %u times after start-up (a knob or a key must not blank it)\n", host_full); exit(1); }
         exit(0);
     }
 }

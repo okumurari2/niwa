@@ -100,31 +100,40 @@ prev = keys;
 
 ## Screen
 
-240 x 240 pixels, 16-bit colour (`RGB(r, g, b)` with 0..255 each; `C_BLACK`, `C_WHITE`). The screen keeps
-what you draw: draw only what changed.
+240 x 240 pixels, 16-bit colour. The screen keeps what you draw: draw only what changed. How a screen of a firmware built on
+niwa is laid out is [UI.md](UI.md); this is the drawing kit ([gfx.c](../firmware/src/gfx.c), from maku).
+
+**Colours are tokens, not RGB.** `T_BG` (background), `T_TEXT`, `T_MID`, `T_DIM`, `T_LINE`, `T_RAISE`, `T_THEME`, `T_ACCENT`
+(the one thing being touched), `T_REC`. `palette_set(i)` makes them from one of the palettes of `tools/gen_ui_palettes.py`
+(`UI_DEFAULT_PALETTE` is VIOLET, the colour of the logo); the generator checks the contrast of every pairing and fails the
+build on a miss. A palette is added at the end of the list only (a saved choice is its number). The only colours that are not
+tokens: `C_BLACK` / `C_WHITE` of the rescue, update and crash screens, and a track's own colour (UI.md 5.1).
+
+**Text** is Inter Tight, anti-aliased, in three faces: `AF_S` (12 px, labels), `AF_M` (15 px, names), `AF_L` (28 px, big values:
+only `" #+-./0-9A-Y"`; small letters show as capitals). Names are capital English words of up to 7 letters (UI.md 4).
 
 Straight to the screen:
 
 | | |
 | --- | --- |
 | `lcd_fill(x, y, w, h, colour)` | a rectangle |
-| `draw_text_box(x, y, w, font, "text", colour, align)` | text in a box of width `w`, cleared to black first; align 0 left, 1 centre, 2 right |
-
-Fonts: `FONT_S` (16 px, ASCII 32..126) and `FONT_L` (32 px, ASCII 32..95: capitals, digits, signs; small
-letters show as `?`).
+| `draw_text_line(x, y, w, &AF_M, "text", colour, bg, align)` | one line in a box of width `w`, cleared to `bg`; align 0 left, 1 centre (by the ink), 2 right |
+| `draw_text_box(x, y, w, &AF_M, "text", colour, align)` | the same on black: for screens that must not depend on a palette |
 
 For anything more, a canvas: draw into a buffer, then send it in one go (no flicker):
 
 ```c
-cv_begin(240, 56, C_BLACK);                 /* w x h, cleared; w * h <= CV_MAX (240 x 64) */
-cv_rect(x, y, w, h, colour);
-cv_line(x0, y0, x1, y1, colour);
-cv_pset(x, y, colour);
-cv_text(x, y, &FONT_S, "text", colour);     /* returns x after the text; text_w(&FONT_S, "text") measures */
-cv_blit(0, 140);                            /* to the screen at (0, 140) */
+cv_begin(119, 119, T_BG);                         /* w x h, cleared; w * h <= CV_MAX (240 x 124) */
+cv_rect(x, y, w, h, T_LINE);                      /* cv_frame, cv_line, cv_line_t(.., thick), cv_pset */
+cv_text(x, y, &AF_S, "KNOB", T_DIM);              /* returns x after the text; text_w(&AF_S, "KNOB") measures */
+cv_text_in(0, y, 119, &AF_L, "64", T_THEME, T_BG);/* centred by the ink across x .. x + w */
+cv_text_fit(x, y, &AF_M, name, T_MID, T_BG, 100); /* never a smaller face: ends in an ellipsis */
+cv_blit(121, 0);                                  /* to the screen at (121, 0) */
 ```
 
-A bigger canvas: raise `CV_MAX` in platform.c (2 bytes a pixel, in the pool: 240 x 240 is 113 KB of 336).
+A bigger canvas: raise `CV_MAX` in platform.c (2 bytes a pixel, in the pool). The fonts and palettes are generated at build time
+(`tools/gen_aa_font.py`, `tools/gen_ui_palettes.py`; about 43 KB of flash). `tests/text_spacing_test.py` checks the spacing of the
+generated glyph tables.
 
 ## Sound
 
@@ -165,8 +174,14 @@ Up to 256 bytes, kept with their length and a CRC32 in one 4 KiB flash sector (`
 change of size or a broken save reads as "nothing saved": start from your defaults then.
 
 **Save when nothing sounds.** Erasing the sector holds the interrupts off for tens of milliseconds: the sound
-drops out. `niwa.c` saves 2 s after the last change, once all voices are silent. Flash wears out after about
-100,000 erases of a sector: never save in a loop.
+drops out. `settings_save` softens it (the speaker is small and the unit runs on a battery): the sound is faded out in 10 ms
+and played to silence before the erase and brought back in 25 ms after, so the stop is a short dip, not a click at both ends
+([soft.h](../firmware/src/soft.h), `MANNER:erase-dip`). Still: `niwa.c` saves 2 s after the last change, once all voices are
+silent. Flash wears out after about 100,000 erases of a sector: never save in a loop. A save of your own (a new store you add)
+goes through the same `soft_down_wait()` / `soft_up()` pair, or through `settings_save`.
+
+**Power-on.** The first 0.8 s of sound swell in from silence (`MANNER:fade-in`), so a MASTER knob left up does not shout out of
+the small speaker. USB audio is not affected (its copy is taken before).
 
 ## The key and the circle of fifths
 

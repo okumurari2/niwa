@@ -58,12 +58,12 @@ maku は Felucca 1.x の全体（エンジン・シーケンサー・ページ�
 
 niwa の設定セクタ（`settings_load()` / `settings_save()`）の場所は [API.md](API.md)「Memory and flash」。
 
-## 5. 進め方（案）
+## 5. 進め方と状況（2026-10-13）
 
-1. `gfx.c` を maku の必要部分で置き換え、フォントとパレットの生成をビルドに入れる。ホストモードで PNG を出し、Dinghy の画面が崩れないことを見る。
-2. 4区画の骨組みを、トラック・パラメータの表を渡せば描ける形で入れる。`niwa.c` を4区画で描く例にする。
-3. SOFT（fade-in / erase-dip）を `platform.c` に入れ、`settings_save()` を包む。
-4. 電池通知・LED AUTO。
-5. ここまで来たら LOFI を載せる。いいねの部品は LOFI が要るときに。
+1. ~~`gfx.c` を maku の必要部分で置き換え、フォントとパレットの生成をビルドに入れる。~~ **済み。** `gfx.c`（maku 73d9d1a から。キーキャップ、アイコン、角丸、スタイル、テスト用フックを除いた約540行）、`tools/gen_aa_font.py` `aa_raster.py` `gen_ui_palettes.py`、Inter Tight。ビルドとホストモードが生成する。`tests/text_spacing_test.py` が通る。
+2. ~~4区画の骨組みを入れる。~~ **済み。** `quad.h`（`quad_draw` `quad_dividers`）。`niwa.c` を、左上=いま・SELECT=LEVEL・PRESETS=RELEASE の例に書き換えた。ホストの検査「起動後に全画面を塗らない」を足した（突然変異で検出を確認）。
+3. ~~SOFT（fade-in / erase-dip）。~~ **済み。** `soft.h`、`platform.c`（音声割り込み、`settings_save`、起動）、`tests/soft_test.c`。実機で聞いて確かめるのはこれから。
+4. 電池通知：**済み**（`battery.h`、`tests/battery_test.c`）。LED AUTO：**未**。niwa の `fm1_input.h` に DIM LO（`fm1_led_dim_level`）がなく、maku / Felucca の HAL が要る（`tools/upstream.json` の `fm1_input.h`：adopt `later`）。
+5. LOFI を載せる。いいね（`maku_fav.c`）と `MANNER:rec-preerase`（`st_blank` / `st_tidy`）は LOFI が保存を持つときに。
 
-各段で `tests/run_host.sh` と `./build.sh`（ツールチェーンのある環境）を通し、decisions.md に1行足す。
+実機向けのビルドは、JieLi のツールチェーンと AC79 SDK を入れた環境で `./build.sh` が通る（`niwa.fwsc` 66,512 B、枠 581,564 B のうち。RAM 14 KB、プール 59.5 KB）。各段で `tests/run_tests.sh` と `./build.sh` を通し、decisions.md に1行足す。

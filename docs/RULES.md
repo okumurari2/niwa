@@ -42,7 +42,8 @@ runs late the sound crackles; when it never ends the watchdog resets the FM-1.
 
 - Call `platform_poll()` at least every few ms (USB) and never less than every 8 s (watchdog).
 - Draw only what changed: a full screen is 115 KB over SPI.
-- A flash erase stops everything for tens of milliseconds, the sound too. Save when silent.
+- A flash erase stops everything for tens of milliseconds, the sound too. Save when silent. `settings_save` wraps the erase in a
+  short fade (soft.h) so that what is left is a dip, not a click; an erase of your own does the same or goes through it.
 
 ## When it crashes
 
