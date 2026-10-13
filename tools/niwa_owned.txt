@@ -1,6 +1,7 @@
 # The files that belong to niwa. A firmware built on niwa does not change them: it changes them in niwa and merges (CLAUDE.md).
 # One path or directory (ending in /) per line. Not here, because a firmware sets its own: tools/build.py (APP, ID_BASE),
-# tests/run_host.sh (APP), tests/run_tests.sh, docs/decisions.md, README.md, LICENSING.md, .github/, assets/logo*.
+# tests/run_host.sh (APP), tests/run_tests.sh, docs/decisions.md, README.md, LICENSING.md, .github/, assets/logo*,
+# web/emu/app.js (its name, the words under the buttons, the help; the rest of web/emu is niwa's).
 firmware/hal/
 firmware/loader/
 firmware/crt0.S
@@ -28,6 +29,7 @@ tools/get_toolchain.sh
 tools/check_owned.py
 tools/niwa_owned.txt
 tests/host.c
+tests/sim.c
 tests/fifths_test.c
 tests/soft_test.c
 tests/battery_test.c
@@ -41,4 +43,11 @@ docs/UPSTREAM.md
 docs/API.md
 docs/RULES.md
 docs/MAKE-IT-YOURS.md
+docs/EMULATOR.md
+web/emu/index.html
+web/emu/worklet.js
+web/emu/web_host.c
+web/emu/build.sh
+web/emu/emu_test.mjs
+web/emu/fonts/
 CLAUDE.md

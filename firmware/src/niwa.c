@@ -11,6 +11,7 @@
  * Rules of the road (the chip has no FPU and no libgcc): integers only, no float, no 64-bit division.
  * tests/host.c runs this file on a computer: the screen as a PNG, the sound as a WAV.
  * What platform.c offers: docs/API.md. The chip's rules: docs/RULES.md. */
+#define APP_STEPPED                             /* app_init / app_step instead of app_main: the browser build runs the loop from outside (docs/EMULATOR.md) */
 #include "platform.c"
 
 /* ---- the sound (runs in the audio ISR: keep it short, no flash, no screen) */
@@ -127,11 +128,13 @@ static int32_t knob(int32_t v, uint32_t enc)    /* a knob moves a value 0..127: 
     return v < 0 ? 0 : v > 127 ? 127 : v;
 }
 
-static void app_main(void)
+/* what survives a power-off (add yours, up to 256 bytes) */
+static struct { int8_t oct; uint8_t level, release; } set = {0, 127, 113};
+static uint32_t prev, t_change, dirty, shown_now = ~0u, shown_quads = ~0u;
+static uint8_t held[27];                        /* the note each key plays */
+
+static void app_init(void)
 {
-    struct { int8_t oct; uint8_t level, release; } set = {0, 127, 113};   /* what survives a power-off (add yours, up to 256 bytes) */
-    uint32_t prev = 0, k, t_change = 0, dirty = 0, shown_now = ~0u, shown_quads = ~0u;
-    uint8_t held[27] = {0};                     /* the note each key plays */
     settings_load(&set, sizeof set);
     if (set.oct < -2 || set.oct > 2) set.oct = 0;
     if (set.level > 127u || set.release > 127u) { set.level = 127; set.release = 113; }
@@ -139,60 +142,60 @@ static void app_main(void)
     palette_set(UI_DEFAULT_PALETTE);
     lcd_fill(0, 0, 240, 240, T_BG);
     quad_dividers();
+}
 
-    for (;;) {
-        uint32_t keys, down, up, rel, b, lit = 0, base = (uint32_t)(KEY0 + 12 * set.oct);
-        uint8_t st, d1, d2;
-        platform_poll();
+static void app_step(void)                      /* one pass of the main loop */
+{
+    uint32_t keys, down, up, rel, b, k, lit = 0, base = (uint32_t)(KEY0 + 12 * set.oct);
+    uint8_t st, d1, d2;
 
-        keys = fm1_in.notes;                    /* bit k: key k (0 = F3 .. 26 = G5) */
-        down = keys & ~prev;
-        up = prev & ~keys;
-        prev = keys;
-        for (k = 0; k < 27u; k++) {                 /* (a key stops the note it started: the octave may change meanwhile) */
-            if (down >> k & 1u) { held[k] = (uint8_t)(base + k); play(held[k], 100); midi_send(0x90, held[k], 100); }
-            if (up >> k & 1u) { stop(held[k]); midi_send(0x80, held[k], 0); }
-        }
+    keys = fm1_in.notes;                    /* bit k: key k (0 = F3 .. 26 = G5) */
+    down = keys & ~prev;
+    up = prev & ~keys;
+    prev = keys;
+    for (k = 0; k < 27u; k++) {                 /* (a key stops the note it started: the octave may change meanwhile) */
+        if (down >> k & 1u) { held[k] = (uint8_t)(base + k); play(held[k], 100); midi_send(0x90, held[k], 100); }
+        if (up >> k & 1u) { stop(held[k]); midi_send(0x80, held[k], 0); }
+    }
 
-        b = fm1_input_edges(&rel);              /* buttons pressed since the last call (bit = button id) */
-        if (b & (1u << BTN_OCT_DOWN) && set.oct > -2) { set.oct--; dirty = 1; t_change = fm1_ms; }
-        if (b & (1u << BTN_OCT_UP) && set.oct < 2) { set.oct++; dirty = 1; t_change = fm1_ms; }
-        k = (uint32_t)knob(set.level, ENC_SELECT);
-        if (k != set.level) { set.level = (uint8_t)k; level = k; dirty = 1; t_change = fm1_ms; }
-        k = (uint32_t)knob(set.release, ENC_PRESETS);
-        if (k != set.release) { set.release = (uint8_t)k; dirty = 1; t_change = fm1_ms; }
-        rel_dec = 48 - (int32_t)set.release * 47 / 127;           /* 0 -> 48 (a click), 127 -> 1 (a long tail) */
+    b = fm1_input_edges(&rel);              /* buttons pressed since the last call (bit = button id) */
+    if (b & (1u << BTN_OCT_DOWN) && set.oct > -2) { set.oct--; dirty = 1; t_change = fm1_ms; }
+    if (b & (1u << BTN_OCT_UP) && set.oct < 2) { set.oct++; dirty = 1; t_change = fm1_ms; }
+    k = (uint32_t)knob(set.level, ENC_SELECT);
+    if (k != set.level) { set.level = (uint8_t)k; level = k; dirty = 1; t_change = fm1_ms; }
+    k = (uint32_t)knob(set.release, ENC_PRESETS);
+    if (k != set.release) { set.release = (uint8_t)k; dirty = 1; t_change = fm1_ms; }
+    rel_dec = 48 - (int32_t)set.release * 47 / 127;           /* 0 -> 48 (a click), 127 -> 1 (a long tail) */
 
-        while (midi_get(&st, &d1, &d2)) {       /* USB-MIDI in, any channel */
-            if ((st & 0xF0u) == 0x90u && d2) play(d1, d2);
-            else if ((st & 0xF0u) == 0x80u || (st & 0xF0u) == 0x90u) stop(d1);
-        }
+    while (midi_get(&st, &d1, &d2)) {       /* USB-MIDI in, any channel */
+        if ((st & 0xF0u) == 0x90u && d2) play(d1, d2);
+        else if ((st & 0xF0u) == 0x80u || (st & 0xF0u) == 0x90u) stop(d1);
+    }
 
-        base = (uint32_t)(KEY0 + 12 * set.oct);
-        for (k = 0; k < NV; k++)                /* what sounds, on the keys of this octave */
-            if (voice[k].gate && voice[k].note >= base && voice[k].note < base + 27u)
-                lit |= 1u << (voice[k].note - base);
-        for (k = 0; k < 27u; k++)
-            fm1_led_key(KEY_LED(k), lit >> k & 1u);
-        fm1_led_key(BTN_OCT_DOWN, set.oct < 0);
-        fm1_led_key(BTN_OCT_UP, set.oct > 0);
+    base = (uint32_t)(KEY0 + 12 * set.oct);
+    for (k = 0; k < NV; k++)                /* what sounds, on the keys of this octave */
+        if (voice[k].gate && voice[k].note >= base && voice[k].note < base + 27u)
+            lit |= 1u << (voice[k].note - base);
+    for (k = 0; k < 27u; k++)
+        fm1_led_key(KEY_LED(k), lit >> k & 1u);
+    fm1_led_key(BTN_OCT_DOWN, set.oct < 0);
+    fm1_led_key(BTN_OCT_UP, set.oct > 0);
 
-        if (msg && (int32_t)(fm1_ms - msg_until) >= 0) msg = 0;
-        k = battery_notice(fm1_ms, fm1_battery(), fm1_usb_powered(), msg != 0);           /* MANNER:battery: only when it is low */
-        if (k) { msg = k == BATT_LOW ? "BATTERY LOW" : "BATTERY EMPTY"; msg_until = fm1_ms + 2000u; }
-        k = quad_mix(quad_mix(quad_mix(last_note, (uint32_t)set.oct + 8u), msg != 0), msg ? (uint32_t)msg[8] : 0u);   /* what the screen shows, as a number: redraw on change */
-        if (k != shown_now) { shown_now = k; draw_now(last_note, set.oct); }
-        k = quad_mix(quad_mix(0u, set.level), set.release);
-        if (k != shown_quads) {
-            quad_param_t sel = {"LEVEL", set.level, 0, T_THEME, 0}, pre = {"RELEASE", set.release, 0, T_THEME, 0};
-            shown_quads = k;
-            quad_draw(Q_SELECT, &sel);
-            quad_draw(Q_PRESETS, &pre);              /* ALGORITHM: free for your third knob */
-        }
+    if (msg && (int32_t)(fm1_ms - msg_until) >= 0) msg = 0;
+    k = battery_notice(fm1_ms, fm1_battery(), fm1_usb_powered(), msg != 0);           /* MANNER:battery: only when it is low */
+    if (k) { msg = k == BATT_LOW ? "BATTERY LOW" : "BATTERY EMPTY"; msg_until = fm1_ms + 2000u; }
+    k = quad_mix(quad_mix(quad_mix(last_note, (uint32_t)set.oct + 8u), msg != 0), msg ? (uint32_t)msg[8] : 0u);   /* what the screen shows, as a number: redraw on change */
+    if (k != shown_now) { shown_now = k; draw_now(last_note, set.oct); }
+    k = quad_mix(quad_mix(0u, set.level), set.release);
+    if (k != shown_quads) {
+        quad_param_t sel = {"LEVEL", set.level, 0, T_THEME, 0}, pre = {"RELEASE", set.release, 0, T_THEME, 0};
+        shown_quads = k;
+        quad_draw(Q_SELECT, &sel);
+        quad_draw(Q_PRESETS, &pre);              /* ALGORITHM: free for your third knob */
+    }
 
-        if (dirty && quiet() && fm1_ms - t_change > 2000u) {   /* 2 s after the change, when silent (an erase stalls the sound) */
-            settings_save(&set, sizeof set);
-            dirty = 0;
-        }
+    if (dirty && quiet() && fm1_ms - t_change > 2000u) {   /* 2 s after the change, when silent (an erase stalls the sound) */
+        settings_save(&set, sizeof set);
+        dirty = 0;
     }
 }

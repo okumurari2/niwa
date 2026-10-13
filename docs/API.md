@@ -25,6 +25,9 @@ static void app_audio(int32_t *out, uint32_t n);   /* the audio interrupt: fill 
 static void app_main(void);                        /* your main loop; never returns */
 ```
 
+(Or `#define APP_STEPPED` before `#include "platform.c"` and write `app_init()` and `app_step()` — one pass of the loop —
+instead of `app_main`: the same on the FM-1, and the app also runs in a browser, [EMULATOR.md](EMULATOR.md).)
+
 `app_main` must call **`platform_poll()`** often: every few milliseconds, and never less than once every
 couple of seconds. It feeds the watchdog (8 s, then the FM-1 resets), runs USB (MIDI, the updater, a computer
 asking for the update mode) and reads the MASTER knob. A long job (drawing a lot, saving) is fine; a loop that

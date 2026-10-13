@@ -14,7 +14,11 @@
  *
  * The app (niwa.c) includes this file first and supplies:
  *   static void app_audio(int32_t *out, uint32_t n)   audio ISR: n stereo frames, L R L R, Q15 (+-32767), out is zero
+ * and either (the browser build, web/emu, needs the second: its loop is run from outside)
  *   static void app_main(void)                        never returns; calls platform_poll() often (every few ms)
+ *   #define APP_STEPPED, then
+ *   static void app_init(void)                        once, after boot
+ *   static void app_step(void)                        one pass of the main loop (platform_poll() was called just before)
  */
 /* the panel by name: buttons (fm1_in.buttons, fm1_input_edges, fm1_led_key: bit / id), the encoders
  * (fm1_enc_take); the 27 note keys are fm1_in.notes bit 0 (F3) .. 26 (G5), LED id 14 + key */
@@ -25,7 +29,11 @@ enum { ENC_SELECT = 0, ENC_ALGORITHM = 1, ENC_KNOB1 = 2, ENC_KNOB2 = 3, ENC_KNOB
 #include "battery.h"                            /* battery_notice(): BATTERY LOW / EMPTY as a message, nothing else (MANNER:battery) */
 
 #ifdef NIWA_HOST
+#ifdef NIWA_WEB
+#include "../../web/emu/web_host.c"            /* in a browser: the same fake FM-1 (tests/sim.c), run from a page (web/emu, docs/EMULATOR.md) */
+#else
 #include "../../tests/host.c"                  /* on a computer: a fake FM-1 (tests/host.c) */
+#endif
 #else
 #include <stdint.h>
 #include "fm1_time.h"
@@ -358,5 +366,18 @@ void fm1_cstart(void)
     app_main();
     for (;;)
         platform_poll();
+}
+#endif
+
+#ifdef APP_STEPPED                              /* the loop is ours: the same on the FM-1, on a computer, in a browser */
+static void app_init(void);
+static void app_step(void);
+static void app_main(void)
+{
+    app_init();
+    for (;;) {
+        platform_poll();
+        app_step();
+    }
 }
 #endif

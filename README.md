@@ -49,6 +49,7 @@ Credits and licences: [LICENSING.md](LICENSING.md).
 | **Settings** | `settings_load()` / `settings_save()`: up to 256 bytes with a CRC in their own flash sector. |
 | **A crash screen** | A fault shows where it happened (the PC), then the FM-1 restarts. |
 | **Host mode** | The same `niwa.c` on your computer: the screen as an image, the sound as a WAV. No FM-1 needed to try an idea. |
+| **In a browser** | The same code compiled to WebAssembly in the page MAKU and t8lab use: the FM-1 drawn with its screen, knobs and keys, sound from the page. `web/emu/build.sh`, [docs/EMULATOR.md](docs/EMULATOR.md). |
 | **The key** | `fifths.h`: OCT- / OCT+ as the circle of fifths, a change of key signature that leaves what already plays alone. One scale, no choosing. |
 | **Checks** | The build fails on what bricks or breaks an FM-1 firmware: a 64-bit division, a call into the chip ROM, too much RAM, a register touched outside `hal/`. |
 
