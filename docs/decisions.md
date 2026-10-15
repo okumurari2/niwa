@@ -17,3 +17,11 @@
 - 2026-10-13: maku / t8lab の実機エミュレータのページ(web/emu/index.html + worklet.js、2つは中身がほぼ同一)を niwa の共有物にした。固有の部分は web/emu/app.js だけ(名前・ボタン下の語・ヘルプ・クレジット)。niwa 側の wasm は Emscripten なしの clang(wasm32 + wasm-ld)で、tests/host.c の偽の FM-1 を tests/sim.c に切り出して共有(出力は WAV・画面とも分割前と同一)。ループは外から回すので、アプリは APP_STEPPED + app_init()/app_step() で書く(従来の app_main も実機・ホストでは動く)。maku/t8lab の felucca_web.c と同じ web_* の口なので、2つはページだけ差し替えられる(docs/EMULATOR.md)。maku/t8lab 側はまだ触っていない。実機・Safari・Firefox では確かめていない
 - 2026-10-13: エミュレータのページの色は全部 CSS 変数にして(直書きだった LED の消灯・点灯・呼吸・グロー・中間・起動スイープ、ベゼル、REC の赤を含む)、app.js の theme で上書きできるようにした。LED の呼吸・グロー・中間は消灯色と点灯色の color-mix(従来の16進値と一致する割合: 呼吸 80% / 58%、グロー 34%)なので、変えるのは消灯と点灯の2色でよい。niwa の app.js はロゴの薄紫の暗い筐体、既定(theme なし)は従来の見た目。headless Chromium で暗い筐体と明るい筐体(オレンジの点灯)を確認。画面の中の色は対象外(ファームの T_*)
 - 2026-10-13: .github/workflows/emulator.yml を追加(maku のものの niwa 版): main への push で web/emu/build.sh → emu_test.mjs → GitHub Pages。Emscripten の代わりに apt の clang + lld。maku と違い emu_test の失敗はデプロイを止める(決定的で速いため)。リポジトリ側で Settings > Pages > Source を GitHub Actions にする必要がある(未設定)。Actions 上での実行は未確認
+- 2026-10-15: [tai] TAI を niwa の tai ブランチで開始。最初の縦切りは状態モデル(firmware/src/tai/organs.h、純C・Q15・5 ms/ステップ)+ホストシミュレーション(tests/tai/sim.c、CSV)+生体モニター画面(tai.c)。DSP には繋がない - 体の挙動を先に CSV と画面で見て、気に入ってから T1→T3→T4 を足す
+- 2026-10-15: [tai] 4臓器は輪(心→肺→筋→体液→心)で、符号の反転は brake の1つだけ。しきい値は全部 smoothstep - 平衡を探して行き過ぎる形にするため。潮(drift: 約12秒ごとに各臓器が ±0.18 傾き直す)を入れた - 入れないとノブを止めた体は数十秒で固定点に落ちた(ホストで確認)
+- 2026-10-15: [tai] 安全弁: 停止 6 s で補充調律(brake 0 を 3 s 保持、体液を半分抜く、40 bpm で1拍)。全シナリオで停止 ≤ 6 s を sim.c が検査 - 会場で無音のまま固まらないため
+- 2026-10-15: [tai] 画面は 2×2(UI.md 1)を破り、4本の掃引式トレース+右に数値+下にエンコーダー3つと掃引速度 - 構想仕様の生体モニターが主役で、ノブ4本は画面の位置でなく色で臓器を示す。トレースはトラック色(UI.md 5.1 の例外)
+- 2026-10-15: [tai] 鍵盤は 27 鍵を 9 鍵ずつ3帯域(PACE / OCCLUDE / COOL)。KNOB 1〜4 は保存しない(起動時 64)、エンコーダー3つと掃引速度は保存 - 体質は残し、病態は残さない(PHILOSOPHY「育つ」以外の記録を増やさない)
+- 2026-10-15: [tai] パッケージ ID は FM-1_97N(niwa 95N、LOFI 96N の次)。APP=tai、SETTINGS_MAGIC "TAI1"
+- 2026-10-15: [tai] エミュレータ(GitHub Pages)は tai ブランチへの push で作る(.github/workflows/emulator.yml の APP=tai)。main の同じワークフローも同じ Pages に書くので、niwa の main に push すると niwa 版で上書きされる(未対処)
+- 2026-10-15: [core] core/q15.h(Q15 の乗算・リーキー積分器・smoothstep・xorshift ノイズ)。TAI の語彙を持たない。niwa の main へ戻すのは状態モデルのホスト検証が終わってから

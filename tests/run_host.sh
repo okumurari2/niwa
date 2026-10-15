@@ -3,7 +3,7 @@
 # Run firmware/src/niwa.c on this computer (tests/host.c): build/host/niwa.wav and the screens as PNG.
 set -e
 cd "$(dirname "$0")/.."
-export APP=${APP:-niwa}                                          # the app: firmware/src/APP.c (a firmware built on niwa: its own name)
+export APP=${APP:-tai}                                          # the app: firmware/src/APP.c (a firmware built on niwa: its own name)
 mkdir -p build/host build/gen
 gen() { out=build/gen/$1; tool=tools/$2; shift 2; [ "$out" -nt "$tool" ] || python3 "$tool" "$out" "$@" > /dev/null; }
 gen ui_fonts.h gen_aa_font.py --preset inter-tight        # the UI fonts and palettes (docs/UI.md), made once

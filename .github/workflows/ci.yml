@@ -11,6 +11,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: pip install Pillow
       - run: sh tests/run_tests.sh          # no FM-1 and no toolchain: the host tests, the screen, the text spacing
+      - run: sh tests/tai/run.sh            # TAI: the body's checks and CSV, the app on the computer
       - run: python3 tools/upstream.py check      # LOCAL (a platform file changed without a note) fails; MOVED only informs
   target:
     # The build for the FM-1 itself: a change that only the real chip's compiler rejects (the hardware half of platform.c is
@@ -24,5 +25,5 @@ jobs:
       - run: JIELI_TOOLCHAIN=$HOME/.jieli/toolchain ./build.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: niwa.fwsc
-          path: build/niwa.fwsc
+          name: tai.fwsc
+          path: build/tai.fwsc

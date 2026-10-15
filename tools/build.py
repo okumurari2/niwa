@@ -47,8 +47,8 @@ SDK_SHA256 = {
     "cfg/eq_cfg_hw.bin": "41167491bffed4651750719c973d2758adeb9021a5670d02d6a53c85ed80ea7d",
 }
 
-APP = "niwa"                        # the app: firmware/src/APP.c, build/APP.bin, build/APP.fwsc. A firmware built on niwa: its name
-ID_BASE = "FM-1_95"                 # the package identity is ID_BASE + N (N = the minor version of a release) (OUR_LOADER in the
+APP = "tai"                         # the app: firmware/src/APP.c, build/APP.bin, build/APP.fwsc. A firmware built on niwa: its name
+ID_BASE = "FM-1_97"                 # the package identity is ID_BASE + N (N = the minor version of a release) (OUR_LOADER in the
 PRODUCT = ID_BASE + "0"             # installer wants FM-1_9NN). niwa: 95N. A firmware built on niwa: pick your own (docs/MAKE-IT-YOURS.md)
 VERSION = None                      # APP_VER for release builds
 

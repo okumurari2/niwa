@@ -358,7 +358,7 @@
    "from": "sloop",
    "adopt": "",
    "note": "LOCAL: niwa's names, identity FM-1_95N, the checks, the generation of the UI fonts and palettes.",
-   "sha256": "4e4d0ce49d3a5eca",
+   "sha256": "c705b437218ea037",
    "upstream": {
     "sloop": "8b42493b5d794bc9",
     "felucca": "35150f31225210fe"
