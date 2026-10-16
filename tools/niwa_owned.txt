@@ -44,6 +44,7 @@ docs/API.md
 docs/RULES.md
 docs/MAKE-IT-YOURS.md
 docs/EMULATOR.md
+docs/SEND.md
 web/emu/index.html
 web/emu/worklet.js
 web/emu/web_host.c
