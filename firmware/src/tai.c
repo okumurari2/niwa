@@ -111,16 +111,27 @@ static void hand(uint32_t k, int down)          /* key k (0..26) down or up: the
     } else if (down) org_cool(&body);
 }
 
-/* ---- the monitor: four traces sweeping left to right (an ICU bedside monitor), the numbers at the right, the three encoders
- * along the bottom. The traces are a track colour each (docs/UI.md 5.1: the one exception to the tokens). */
-#define TW 184u                                 /* the traces: x 0..183 */
+/* ---- the monitor, laid out like an operating-room bedside monitor: black ground, one colour per signal (ECG green, respiration
+ * yellow, the pleth-like muscle cyan, venous pressure blue), the trace on the left, its number big on the right in the same colour,
+ * red for the alarm. Not the palette tokens (UI.md 5.1 keeps the track-colour exception; the black and greys are fixed too).
+ *
+ * Who moves a value (the two things a knob and a neighbour can do look alike on a trace), shown on every lane:
+ *   the bar under the number: SOLID = what the knob alone explains; AMBER = pushed up by the others; a hollow outline = held down
+ *   the tag at the top right: KNOB (white, for 2 s after you turn it) or <HEART / <LUNG / <MUSCLE / <FLUID / <HAND / <TIDE (amber:
+ *   the biggest other push, when it is big enough to see) */
+#define TW 150u                                 /* the traces: x 0..149 */
 #define LANE 50u                                /* 4 lanes, y 0..199 */
-#define NX 186u                                 /* the numbers: x 186..239 */
+#define NX 153u                                 /* the numbers: x 153..239 */
 #define BAR 202u                                /* the encoders: y 202..239 */
-static const uint16_t TRACE[4] = {RGB(90, 232, 128), RGB(244, 212, 64), RGB(236, 236, 242), RGB(80, 150, 255)};
-static const uint16_t CVP_FILL = RGB(22, 44, 92);
-static const uint16_t SWEEP_MS[3] = {60, 30, 15};       /* per pixel: 11 s, 5.5 s, 2.8 s across */
+#define BLACK C_BLACK
+static const uint16_t TRACE[4] = {RGB(64, 240, 96), RGB(255, 226, 60), RGB(70, 224, 238), RGB(74, 140, 255)};
+static const uint16_t AMBER = RGB(255, 160, 40), ALARM = RGB(255, 56, 56), WHITE = RGB(246, 246, 250), GREY = RGB(132, 134, 146);
+static const uint16_t CVP_FILL = RGB(14, 30, 70);
+static const char *const LEAD[4] = {"ECG II", "RESP", "EMG", "CVP"};
+static const char *const SRC_NAME[7] = {"", "<HEART", "<LUNG", "<MUSCLE", "<FLUID", "<HAND", "<TIDE"};
+static const uint16_t SWEEP_MS[3] = {60, 30, 15};       /* per pixel */
 static const char *const SWEEP_NAME[3] = {"12.5", "25", "50"};
+static uint32_t turned_ms[4];                   /* when each knob was last turned */
 
 static int32_t lo[4], hi[4], last_y[4];         /* this column's extent per trace, in pixels; the last column's end */
 static uint32_t col, col_ms, rng_emg = 0x51u;
@@ -166,7 +177,7 @@ static void sample(void)                         /* after each body step: widen 
 static void column(void)                         /* draw the column at col, clear one ahead */
 {
     int32_t i, a, b;
-    lcd_fill((col + 6u) % TW, 0, 1, 4u * LANE, T_BG);
+    lcd_fill((col + 6u) % TW, 0, 1, 4u * LANE, BLACK);
     for (i = 0; i < 4; i++) {
         a = lo[i] < last_y[i] ? lo[i] : last_y[i];
         b = hi[i] > last_y[i] ? hi[i] : last_y[i];
@@ -191,13 +202,43 @@ static void num(char *s, uint32_t v)            /* v (0..999) as text */
     while (i) s[j++] = t[--i];
     s[j] = 0;
 }
-static void draw_numbers(uint32_t lane, const char *name, uint32_t v, int flat)
+static int32_t shown_of(uint32_t lane)          /* what the number says, and the bar's length: Q15 */
+{
+    return lane == 0 ? q15_clamp((body.hr * 182) >> 8) : lane == 1 ? q15_clamp(body.vent) : lane == 2 ? body.q : body.vol;
+}
+static uint32_t lane_tag(uint32_t lane)         /* 0 none, 1 KNOB, 2 + source: an other push */
+{
+    int32_t p = body.push[lane];
+    if (fm1_ms - turned_ms[lane] < 2000u) return 1u;
+    if ((p < 0 ? -p : p) > Q15(0.07) && body.src[lane]) return 2u + body.src[lane];
+    return 0;
+}
+static void draw_lane(uint32_t lane, uint32_t blink)
 {
     char s[4];
+    uint32_t v, tag = lane_tag(lane), flat = lane == 0 && body.arrest_ms != 0;
+    int32_t val = shown_of(lane), base = body.base[lane], w, bw;
+    v = lane == 0 ? (uint32_t)body.hr >> 8 : (uint32_t)val * (lane == 1 ? 30u : 127u) >> 15;
     num(s, v);
-    cv_begin(240u - NX, LANE, T_BG);
-    cv_text(0, 4, &AF_S, name, TRACE[lane]);
-    cv_text_in(0, 20, 240u - NX, &AF_M, flat ? "---" : s, flat ? T_REC : TRACE[lane], T_BG);
+    cv_begin(240u - NX, LANE, BLACK);
+    cv_text(2, 2, &AF_S, LEAD[lane], TRACE[lane]);
+    if (flat) { if (blink) cv_text(2, 15, &AF_S, "ASYSTOLE", ALARM); }
+    else if (tag == 1u) cv_text(86 - text_w(&AF_S, "KNOB") - 2, 2, &AF_S, "KNOB", WHITE);
+    else if (tag) cv_text(86 - text_w(&AF_S, SRC_NAME[tag - 2u]) - 2, 2, &AF_S, SRC_NAME[tag - 2u], AMBER);
+    cv_text_in(0, 14, 86, &AF_L, flat ? "---" : s, flat ? ALARM : TRACE[lane], BLACK);
+    w = 82;                                     /* the bar: 82 px = the whole scale */
+    bw = (val * w) >> 15;
+    cv_rect(2, 44, w, 4, RGB(28, 28, 34));
+    if (base > val) base = val;
+    if (!flat) {
+        int32_t kb = (base * w) >> 15;
+        cv_rect(2, 44, kb, 4, TRACE[lane]);                          /* the knob's share */
+        if (bw > kb) cv_rect(2 + kb, 44, bw - kb, 4, AMBER);         /* pushed up by the others */
+        {
+            int32_t want = (body.base[lane] * w) >> 15;              /* held down: where the knob alone would have put it */
+            if (want > bw) { cv_rect(2 + bw, 44, want - bw, 1, TRACE[lane]); cv_rect(2 + bw, 47, want - bw, 1, TRACE[lane]); cv_rect(1 + want, 44, 1, 4, TRACE[lane]); }
+        }
+    }
     cv_blit(NX, lane * LANE);
 }
 
@@ -212,10 +253,10 @@ static void draw_bar(void)
     uint32_t i, v[3] = {set.comp, set.metab, set.elyte};
     char s[6];
     for (i = 0; i < 4u; i++) {
-        cv_begin(60, 240u - BAR, T_BG);
-        cv_text(4, 2, &AF_S, NAME[i], T_DIM);
+        cv_begin(60, 240u - BAR, BLACK);
+        cv_text(4, 2, &AF_S, NAME[i], GREY);
         if (i < 3u) num(s, v[i]);
-        cv_text(4, 18, &AF_M, i < 3u ? s : SWEEP_NAME[set.sweep], T_TEXT);
+        cv_text(4, 18, &AF_M, i < 3u ? s : SWEEP_NAME[set.sweep], WHITE);
         cv_blit(i * 60u, BAR);
     }
 }
@@ -235,9 +276,10 @@ static void app_init(void)
     org_init(&body, 0x7A1u);
     for (i = 0; i < 4u; i++) { last_y[i] = (int32_t)(LANE * i + 25u); lo[i] = 1 << 20; hi[i] = -(1 << 20); }
     palette_set(UI_DEFAULT_PALETTE);
-    lcd_fill(0, 0, 240, 240, T_BG);
-    lcd_fill(0, BAR - 2u, 240, 1, T_LINE);
-    lcd_fill(TW + 1u, 0, 1, BAR - 2u, T_LINE);
+    lcd_fill(0, 0, 240, 240, BLACK);
+    lcd_fill(0, BAR - 2u, 240, 1, RGB(48, 50, 58));
+    lcd_fill(TW + 1u, 0, 1, BAR - 2u, RGB(48, 50, 58));
+    for (i = 1; i < 4u; i++) lcd_fill(0, i * LANE - 1u, TW, 1, RGB(26, 28, 34));
     last_ms = col_ms = fm1_ms;
 }
 
@@ -270,7 +312,9 @@ static void app_step(void)
     k = (uint32_t)knob(set.elyte, ENC_ALGORITHM);
     if (k != set.elyte) { set.elyte = (uint8_t)k; dirty = 1; t_change = fm1_ms; }
     for (k = 0; k < 4u; k++) {
+        uint8_t was = knob4[k];
         knob4[k] = (uint8_t)knob(knob4[k], ENC_KNOB1 + k);
+        if (knob4[k] != was) turned_ms[k] = fm1_ms;
         body.knob[k] = q7(knob4[k]);
     }
     body.compliance = q7(set.comp);
@@ -284,16 +328,19 @@ static void app_step(void)
         if ((int32_t)(last_ms - col_ms) >= SWEEP_MS[set.sweep]) { col_ms = last_ms; column(); }
     }
 
-    k = quad_mix(quad_mix(quad_mix(quad_mix(body.hr >> 8, body.arrest_ms != 0),
-                                   (uint32_t)(body.vent + Q15(0.2)) * 30u >> 15), (uint32_t)body.q * 127u >> 15),
-                 (uint32_t)body.vol * 127u >> 15);
-    if (k != shown_nums && (int32_t)(fm1_ms - nums_at) >= 250) {         /* at most 4 times a second */
-        shown_nums = k;
+    if ((int32_t)(fm1_ms - nums_at) >= 200) {                            /* the numbers and bars: 5 times a second, when they changed */
+        uint32_t blink = fm1_ms / 500u & 1u;
+        k = blink;
+        for (b = 0; b < 4u; b++) {
+            k = quad_mix(k, (uint32_t)shown_of(b) >> 7);
+            k = quad_mix(k, (uint32_t)(body.base[b] >> 7));
+            k = quad_mix(k, lane_tag(b) + 8u * (body.arrest_ms != 0));
+        }
         nums_at = fm1_ms;
-        draw_numbers(0, "HR", (uint32_t)body.hr >> 8, body.arrest_ms != 0);
-        draw_numbers(1, "RR", (uint32_t)(body.vent + Q15(0.2)) * 30u >> 15, 0);
-        draw_numbers(2, "Q", (uint32_t)body.q * 127u >> 15, 0);
-        draw_numbers(3, "CVP", (uint32_t)body.vol * 127u >> 15, 0);
+        if (k != shown_nums) {
+            shown_nums = k;
+            for (b = 0; b < 4u; b++) draw_lane(b, blink);
+        }
     }
     k = quad_mix(quad_mix(quad_mix(quad_mix(0u, set.comp), set.metab), set.elyte), set.sweep);
     if (k != shown_bar) { shown_bar = k; draw_bar(); }

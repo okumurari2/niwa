@@ -30,6 +30,8 @@
 #define ORG_DRIFT_MS 12000u                 /* the body's own slow tide: each organ picks a new lean about this often */
 #define ORG_DRIFT Q15(0.18)                 /* how far it leans (+-) */
 
+enum { ORG_SRC_NONE, ORG_SRC_HEART, ORG_SRC_LUNG, ORG_SRC_MUSCLE, ORG_SRC_FLUID, ORG_SRC_HAND, ORG_SRC_TIDE };
+
 typedef struct {
     /* in: set these any time (Q15) */
     int32_t knob[4];                        /* K1 PRESSURE, K2 VENT, K3 TENSION, K4 STASIS */
@@ -67,6 +69,10 @@ typedef struct {
     int32_t reperf;                         /* after occlusion: the rebound, decays */
     int32_t cold;                           /* a cold shock, decays */
 
+    /* who moves each organ (for the monitor): base = where the knob alone would hold the displayed value (Q15, the same scale as
+     * hr/180, vent, q, vol); src = the biggest other push on it (ORG_SRC_*), push = its size, signed (Q15). */
+    int32_t base[4], push[4];
+    uint8_t src[4];
     int32_t drift[4], lean[4];              /* the slow tide per organ (-ORG_DRIFT .. ORG_DRIFT): drift glides to lean */
     uint32_t rng;
     uint32_t ms;                            /* body time */
@@ -92,8 +98,16 @@ static void org_init(org_body *b, uint32_t seed)
     b->occlude = 0;
     b->reperf = b->cold = 0;
     b->rng = seed ? seed : 0x7A1u;
-    for (i = 0; i < 4; i++) b->drift[i] = b->lean[i] = 0;
+    for (i = 0; i < 4; i++) { b->drift[i] = b->lean[i] = b->push[i] = 0; b->src[i] = ORG_SRC_NONE; b->base[i] = Q15(0.5); }
     b->ms = 0;
+}
+
+/* the biggest of three pushes (signed, Q15) and who made it */
+static void org_who(org_body *b, int organ, int32_t a, uint8_t sa, int32_t c, uint8_t sc, int32_t d, uint8_t sd)
+{
+    int32_t aa = a < 0 ? -a : a, ac = c < 0 ? -c : c, ad = d < 0 ? -d : d;
+    b->push[organ] = a + c + d;
+    b->src[organ] = aa >= ac && aa >= ad ? sa : ac >= ad ? sc : sd;
 }
 
 static void org_step(org_body *b)
@@ -121,7 +135,14 @@ static void org_step(org_body *b)
     /* ---- 1 heart: K1 sets the rate, the brake pulls it down; a little wander (no two minutes alike) */
     hr_t = (ORG_HR_MIN << 8) + ((ORG_HR_SPAN * q15_clamp(k1 + b->drift[0])) >> 7) + (n1 >> 9);   /* bpm Q8; noise +-0.25 bpm */
     hr_t += (int32_t)(b->rphase >> 16) < 32768 ? 3 << 8 : -(3 << 8);           /* the breath tugs at the rate (+-3 bpm) */
-    hr_t = (hr_t * (Q1 - b->brake)) >> 15;                                    /* (< 2^31: hr_t < 180 << 8) */
+    {
+        int32_t k_only = (ORG_HR_MIN << 8) + ((ORG_HR_SPAN * k1) >> 7), cut;
+        hr_t = (hr_t * (Q1 - b->brake)) >> 15;                                    /* (< 2^31: hr_t < 180 << 8) */
+        cut = -((k_only * b->brake) >> 15);
+        b->base[0] = (k_only * 182) >> 8;
+        org_who(b, 0, (cut * 182) >> 8, ORG_SRC_FLUID, (q15_mul(b->reperf, 30 << 8) * 182) >> 8, ORG_SRC_HAND,
+                ((ORG_HR_SPAN * b->drift[0] >> 7) * 182) >> 8, ORG_SRC_TIDE);
+    }
     hr_t += q15_mul(b->reperf, 30 << 8);                                       /* reperfusion: a rush */
     b->hr = q15_leak(b->hr, hr_t, Q15(0.02) - q15_mul(soft, Q15(0.016)));     /* stiff follows in ~0.25 s, soft in ~1.2 s */
     if (b->hr < (ORG_HR_ARREST << 8) && !b->refract_ms) {
@@ -151,6 +172,9 @@ static void org_step(org_body *b)
     /* ---- 2 lung: K2 + the heart's output (the tissue gasps) */
     t = Q15(0.1) + q15_mul(k2, Q15(0.55)) + b->drift[1] + q15_mul(q15_mul(b->co, Q15(0.7)), pass) + (n2 >> 7) + q15_mul(b->reperf, Q15(0.3));
     t -= q15_mul(b->cold, Q15(0.6));
+    b->base[1] = Q15(0.1) + q15_mul(k2, Q15(0.55));
+    org_who(b, 1, q15_mul(q15_mul(b->co, Q15(0.7)), pass), ORG_SRC_HEART, q15_mul(b->reperf, Q15(0.3)) - q15_mul(b->cold, Q15(0.6)),
+            ORG_SRC_HAND, b->drift[1], ORG_SRC_TIDE);
     b->vent = q15_leak(b->vent, q15_clamp(t), Q15(0.008));
     b->rphase += (uint32_t)(Q15(0.2) + b->vent) * 327u;                        /* 6 .. 36 breaths a minute */
     /* CO2: made by the working body, blown off by ventilation */
@@ -161,6 +185,9 @@ static void org_step(org_body *b)
 
     /* ---- 3 muscle: K3 sets the tension; alkalosis makes the membrane jumpy */
     t = q15_mul(k3, Q15(0.7)) + b->drift[2] + q15_mul(q15_mul(b->alk, Q15(0.6)), pass) + q15_mul(b->reperf, Q15(0.2)) - b->cold;
+    b->base[2] = q15_mul(k3, Q15(0.7));
+    org_who(b, 2, q15_mul(q15_mul(b->alk, Q15(0.6)), pass), ORG_SRC_LUNG, q15_mul(b->reperf, Q15(0.2)) - b->cold, ORG_SRC_HAND,
+            b->drift[2], ORG_SRC_TIDE);
     b->q = q15_leak(b->q, q15_clamp(t), Q15(0.01));
     if (b->q > ORG_Q_OSC)                                                      /* rings by itself, up to a limit */
         b->osc += q15_mul(q15_mul(b->q - ORG_Q_OSC, Q15(0.08)), Q1 - b->osc) + 1;
@@ -173,6 +200,13 @@ static void org_step(org_body *b)
 
     /* ---- 4 fluid: K4 pours in, heat leaks in; the kidney drains, by the heart's output and the metabolism */
     t = q15_mul(q15_clamp(k4 + b->drift[3]), Q15(0.0016)) + q15_mul(q15_mul(b->heat, Q15(0.003)), pass);
+    {                                                                          /* how much of the level the knob poured in, by the inflows (small: 32-bit is enough) */
+        int32_t in_k = q15_mul(k4, Q15(0.0016)), in_h = q15_mul(q15_mul(b->heat, Q15(0.003)), pass), in_d = b->drift[3] > 0 ? q15_mul(b->drift[3], Q15(0.0016)) : 0;
+        int32_t tot = in_k + in_h + in_d + 1;
+        b->base[3] = (b->vol * in_k) / tot;
+        org_who(b, 3, b->vol - b->base[3] - (b->vol * in_d) / tot, ORG_SRC_MUSCLE, 0, ORG_SRC_NONE,
+                (b->vol * in_d) / tot, ORG_SRC_TIDE);
+    }
     t = q15_mul(t, Q1 - b->vol);
     t -= q15_mul(b->vol, q15_mul(met, Q15(0.001) + q15_mul(b->co, Q15(0.0016))));
     b->vol = q15_clamp(b->vol + t);
