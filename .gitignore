@@ -2,3 +2,9 @@ build/
 __pycache__/
 .DS_Store
 .venv/
+
+# Security & common excludes
+.env*
+*.key
+*.pem
+node_modules/
