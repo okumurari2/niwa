@@ -25,6 +25,7 @@ typedef struct {
 } aafont_t;
 typedef struct { const char *name; uint16_t bg, surf, text, theme, accent; } ui_pal_t;
 #include "ui_fonts.h"                   /* AF_S 12 px / 400, AF_M 15 px / 500, AF_L 28 px / 600 */
+#include "app_fonts.h"                  /* the firmware's own faces (tools/app_fonts.txt; empty without) */
 #include "ui_palettes.h"
 #define ELLIPSIS '\x85'                 /* the ellipsis glyph of AF_S and AF_M */
 

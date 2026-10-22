@@ -57,6 +57,10 @@ and checks every night for new releases. To be listed:
 
 After that every release you make shows up there by itself.
 
+## Your own fonts
+
+To draw with a face niwa does not have (a big numeral, say), list it in `tools/app_fonts.txt`, one `--face` spec per line (the format and a sample: `tools/gen_aa_font.py`, `tests/app_fonts_sample.txt`). The build makes `build/gen/app_fonts.h` from it, `gfx.c` includes it, and the app draws with `&AF_<NAME>`. A big face costs flash: a 64 px face of 41 glyphs is about 60 KB.
+
 ## 6. Keep the credits
 
 Your firmware stands on niwa, which stands on Dinghy (zvenson), SLOOP (isod89) and Felucca (Leo Kuroshita, Hügelton Instruments). The GPL asks you to

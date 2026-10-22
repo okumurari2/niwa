@@ -15,6 +15,7 @@ mkdir -p build/emu/fonts build/gen
 gen() { out=build/gen/$1; tool=tools/$2; shift 2; [ "$out" -nt "$tool" ] || python3 "$tool" "$out" "$@" > /dev/null; }
 gen ui_fonts.h gen_aa_font.py --preset inter-tight
 gen ui_palettes.h gen_ui_palettes.py
+[ build/gen/app_fonts.h -nt tools/app_fonts.txt ] && [ build/gen/app_fonts.h -nt tools/gen_aa_font.py ] || python3 tools/gen_aa_font.py build/gen/app_fonts.h --faces-file tools/app_fonts.txt > /dev/null   # the firmware's own faces (empty without tools/app_fonts.txt)
 VERSION=${APP_VER:-dev}
 # -fno-builtin: libc.c's memset must stay a loop (as the firmware's flags, tools/build.py). The stack is 256 KiB, the memory 2 MiB.
 clang --target=wasm32 -O2 -ffreestanding -fno-builtin -nostdlib -Wall -Wno-unused-function \
